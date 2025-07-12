@@ -15,6 +15,13 @@ COMBINED_PATH = "combined.json"
 EXPORT_CSV_PATH = "matching_result_faiss_validated.csv"
 XGB_MODEL_PATH = "xgb_model_faiss.json"
 
+# Variabel global untuk progress
+current_progress = {'current': 0, 'total': 1}
+
+@api_view(['GET'])
+def progress_faiss(request):
+    return Response(current_progress)
+
 @api_view(['POST'])
 def upload_file(request):
     if 'file' not in request.FILES:
@@ -82,51 +89,56 @@ def match_faiss(request):
         if 'combined' not in df.columns:
             return Response({'error': 'Kolom "combined" tidak ditemukan.'}, status=400)
 
-        # Bersihkan teks
         df['combined'] = df['combined'].fillna('').astype(str).str.strip()
-
-        # Batasi fitur TF-IDF agar tidak kelebihan RAM
-        vectorizer = TfidfVectorizer(
-            analyzer='char_wb',
-            ngram_range=(2, 4),
-            max_features=10000  # ✅ batasi jumlah fitur agar efisien
-        )
+        vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(2, 4), max_features=10000)
         X_sparse = vectorizer.fit_transform(df['combined'])
+        X_dense = X_sparse.toarray().astype('float32')
 
         chunk_size = 5000
-        total_rows = X_sparse.shape[0]
+        n_total = len(df)
+        n_batches = (n_total + chunk_size - 1) // chunk_size
+
         results = []
+        current_progress['total'] = n_batches * (n_batches + 1) // 2
+        current_progress['current'] += 1
 
-        for start in range(0, total_rows, chunk_size):
-            end = min(start + chunk_size, total_rows)
-            batch_sparse = X_sparse[start:end]
-            batch_dense = batch_sparse.toarray().astype('float32')
+        for i in range(n_batches):
+            for j in range(i, n_batches):
+                start_i = i * chunk_size
+                end_i = min((i + 1) * chunk_size, n_total)
+                start_j = j * chunk_size
+                end_j = min((j + 1) * chunk_size, n_total)
 
-            index = faiss.IndexFlatL2(batch_dense.shape[1])
-            index.add(batch_dense)
-            D, I = index.search(batch_dense, 6)
+                X_i = X_dense[start_i:end_i]
+                X_j = X_dense[start_j:end_j]
 
-            for i in range(end - start):
-                for j in range(1, 6):
-                    idx = I[i][j]
-                    if idx == -1 or idx >= total_rows:
-                        continue
+                index = faiss.IndexFlatL2(X_i.shape[1])
+                index.add(X_i)
+                D, I = index.search(X_j, 6)
 
-                    dist = D[i][j]
-                    score = 1 / (1 + dist)
-                    global_i = start + i
-                    global_j = start + idx
+                for k in range(end_j - start_j):
+                    for r in range(1, 6):
+                        idx_i = I[k][r]
+                        if idx_i == -1 or idx_i >= (end_i - start_i):
+                            continue
 
-                    results.append({
-                        'id_1': global_i,
-                        'id_2': global_j,
-                        'combined_1': df.loc[global_i, 'combined'],
-                        'combined_2': df.loc[global_j, 'combined'],
-                        'faiss_score': round(score, 6),
-                        'fuzzy_combined': fuzz.token_sort_ratio(
-                            df.loc[global_i, 'combined'], df.loc[global_j, 'combined']
-                        )
-                    })
+                        global_i = start_i + idx_i
+                        global_j = start_j + k
+                        dist = D[k][r]
+                        score = 1 / (1 + dist)
+
+                        results.append({
+                            'id_1': global_i,
+                            'id_2': global_j,
+                            'combined_1': df.loc[global_i, 'combined'],
+                            'combined_2': df.loc[global_j, 'combined'],
+                            'faiss_score': round(score, 6),
+                            'fuzzy_combined': fuzz.token_sort_ratio(
+                                df.loc[global_i, 'combined'], df.loc[global_j, 'combined']
+                            )
+                        })
+
+                current_progress['current'] += 1
 
         df_result = pd.DataFrame(results)
         df_result['label'] = (df_result['fuzzy_combined'] > 85).astype(int)
@@ -150,7 +162,6 @@ def match_faiss(request):
         return Response({'results': df_result.head(10).to_dict(orient='records')})
     except Exception as e:
         return Response({'error': str(e)}, status=400)
-
 
 @api_view(['GET'])
 def download_results(request):
