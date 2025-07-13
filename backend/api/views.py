@@ -82,21 +82,31 @@ def process_columns(request):
 def match_faiss(request):
     try:
         if not os.path.exists(COMBINED_PATH):
+            print('[DEBUG] combined.json not found')
             return Response({'error': 'Data belum tersedia. Harap pilih kolom terlebih dahulu.'}, status=400)
 
         df = pd.read_json(COMBINED_PATH)
+        print(f'[DEBUG] Data loaded from combined.json, shape: {df.shape}')
 
         if 'combined' not in df.columns:
+            print('[DEBUG] Kolom "combined" tidak ditemukan di dataframe')
             return Response({'error': 'Kolom "combined" tidak ditemukan.'}, status=400)
 
+        if df['combined'].isnull().all() or len(df) < 2:
+            print('[DEBUG] Data kolom "combined" kosong atau kurang dari 2 baris')
+            return Response({'error': 'Data "combined" kosong atau kurang dari 2 baris untuk matching.'}, status=400)
+
         df['combined'] = df['combined'].fillna('').astype(str).str.strip()
-        vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(2, 4), max_features=10000)
+        print(f'[DEBUG] Sample combined: {df["combined"].head().tolist()}')
+        vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(2, 4), max_features=2000)
         X_sparse = vectorizer.fit_transform(df['combined'])
         X_dense = X_sparse.toarray().astype('float32')
+        print(f'[DEBUG] TFIDF shape: {X_dense.shape}')
 
         chunk_size = 5000
         n_total = len(df)
         n_batches = (n_total + chunk_size - 1) // chunk_size
+        print(f'[DEBUG] n_total: {n_total}, n_batches: {n_batches}')
 
         results = []
         current_progress['total'] = n_batches * (n_batches + 1) // 2
@@ -111,6 +121,10 @@ def match_faiss(request):
 
                 X_i = X_dense[start_i:end_i]
                 X_j = X_dense[start_j:end_j]
+
+                if X_i.shape[0] == 0 or X_j.shape[0] == 0:
+                    print(f'[DEBUG] Skipping empty batch: i={i}, j={j}')
+                    continue
 
                 index = faiss.IndexFlatL2(X_i.shape[1])
                 index.add(X_i)
@@ -140,6 +154,10 @@ def match_faiss(request):
 
                 current_progress['current'] += 1
 
+        if not results:
+            print('[DEBUG] Tidak ada hasil matching yang ditemukan')
+            return Response({'error': 'Tidak ada hasil matching yang ditemukan.'}, status=400)
+
         df_result = pd.DataFrame(results)
         df_result['label'] = (df_result['fuzzy_combined'] > 85).astype(int)
         df_result['user_validasi'] = ""
@@ -152,15 +170,21 @@ def match_faiss(request):
             model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
             model.fit(X_train, y_train)
             model.save_model(XGB_MODEL_PATH)
+            print('[DEBUG] XGB model trained and saved')
         else:
             model = xgb.XGBClassifier()
             model.load_model(XGB_MODEL_PATH)
+            print('[DEBUG] XGB model loaded')
 
         df_result['predicted'] = model.predict(X)
         df_result.to_csv(EXPORT_CSV_PATH, index=False)
+        print('[DEBUG] Matching selesai, hasil disimpan ke CSV')
 
         return Response({'results': df_result.head(10).to_dict(orient='records')})
     except Exception as e:
+        import traceback
+        print('[ERROR]', str(e))
+        traceback.print_exc()
         return Response({'error': str(e)}, status=400)
 
 @api_view(['GET'])
