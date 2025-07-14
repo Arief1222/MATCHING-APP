@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import FileResponse
 from django.core.files.storage import default_storage
-
+from .models import Snapwangi
 import os
 from .services.match_engine import run_faiss_matching
 from .utils.file_handler import handle_upload_file, get_recommended_columns, process_combined_columns
@@ -191,3 +191,47 @@ def export_cleaned_results(request):
     return FileResponse(open("final_cleaned_output.xlsx", 'rb'), as_attachment=True, filename="final_cleaned_output.xlsx")
 
 
+@api_view(['POST'])
+def upload_database(request):
+    if not os.path.exists(COMBINED_PATH):
+        return Response({'error': 'combined.json belum tersedia'}, status=400)
+
+    try:
+
+        # Hapus semua data Snapwangi sebelum upload baru (override)
+        Snapwangi.objects.all().delete()
+        # Reset sequence id agar id dimulai dari 1
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("ALTER SEQUENCE api_snapwangi_id_seq RESTART WITH 1;")
+
+        import json
+        with open(COMBINED_PATH, 'r', encoding='utf-8') as f:
+            combined_data = json.load(f)
+
+        # Dapatkan semua id unik dari salah satu field (selain 'combined')
+        fields = [k for k in combined_data.keys() if k != 'combined']
+        if not fields:
+            return Response({'error': 'Tidak ada field selain combined di combined.json'}, status=400)
+
+        # Ambil semua id unik
+        id_set = set()
+        for field in fields:
+            id_set.update(combined_data[field].keys())
+
+        count = 0
+        for id_key in id_set:
+            row = {}
+            for field in fields:
+                value = combined_data[field].get(id_key)
+                if value is not None:
+                    row[field] = value
+            Snapwangi.objects.create(data=row)
+            count += 1
+
+        return Response({'message': f'{count} data berhasil diupload ke Snapwangi'})
+    except Exception as e:
+        import traceback
+        print('[ERROR upload_database]', str(e))
+        traceback.print_exc()
+        return Response({'error': str(e)}, status=400)
