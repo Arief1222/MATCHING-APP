@@ -192,3 +192,50 @@ def download_results(request):
     if not os.path.exists(EXPORT_CSV_PATH):
         return Response({'error': 'File belum tersedia'}, status=404)
     return FileResponse(open(EXPORT_CSV_PATH, 'rb'), as_attachment=True, filename='matching_result_faiss_validated.csv')
+
+from .models import Snapwangi
+
+@api_view(['POST'])
+def upload_database(request):
+    if not os.path.exists(COMBINED_PATH):
+        return Response({'error': 'combined.json belum tersedia'}, status=400)
+
+    try:
+
+        # Hapus semua data Snapwangi sebelum upload baru (override)
+        Snapwangi.objects.all().delete()
+        # Reset sequence id agar id dimulai dari 1
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("ALTER SEQUENCE api_snapwangi_id_seq RESTART WITH 1;")
+
+        import json
+        with open(COMBINED_PATH, 'r', encoding='utf-8') as f:
+            combined_data = json.load(f)
+
+        # Dapatkan semua id unik dari salah satu field (selain 'combined')
+        fields = [k for k in combined_data.keys() if k != 'combined']
+        if not fields:
+            return Response({'error': 'Tidak ada field selain combined di combined.json'}, status=400)
+
+        # Ambil semua id unik
+        id_set = set()
+        for field in fields:
+            id_set.update(combined_data[field].keys())
+
+        count = 0
+        for id_key in id_set:
+            row = {}
+            for field in fields:
+                value = combined_data[field].get(id_key)
+                if value is not None:
+                    row[field] = value
+            Snapwangi.objects.create(data=row)
+            count += 1
+
+        return Response({'message': f'{count} data berhasil diupload ke Snapwangi'})
+    except Exception as e:
+        import traceback
+        print('[ERROR upload_database]', str(e))
+        traceback.print_exc()
+        return Response({'error': str(e)}, status=400)
