@@ -15,7 +15,7 @@ python-dateutil==2.9.0.post0
 python-Levenshtein==0.27.1
 pytz==2025.2
 RapidFuzz==3.13.0
-scikit-learn==1.7.0
+scikit-learn==1.6.1
 scipy==1.16.0
 six==1.17.0
 sqlparse==0.5.3
@@ -24,3 +24,4 @@ tzdata==2025.2
 xgboost==3.0.2
 psycopg2-binary==2.9.10
 imbalanced-learn==0.13.0
+dotenv==0.9.9

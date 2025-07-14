@@ -17,19 +17,6 @@ EXPORT_CSV_PATH = "matching_result_faiss_validated.csv"
 
 current_progress = {'current': 0, 'total': 1}
 
-@api_view(['POST'])
-def upload_database(request):
-    uploaded_file = request.FILES.get('file')
-
-    if not uploaded_file:
-        return Response({'error': 'Tidak ada file yang diupload'}, status=400)
-
-    with open("uploaded.xlsx", 'wb+') as dest:
-        for chunk in uploaded_file.chunks():
-            dest.write(chunk)
-
-    return Response({'message': '✅ File berhasil disimpan sebagai uploaded.xlsx'})
-
 @api_view(['GET'])
 def progress_faiss(request):
     return Response(current_progress)
