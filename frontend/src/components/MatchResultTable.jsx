@@ -1,6 +1,9 @@
 // components/MatchResultTable.jsx
 import { useState } from "react";
 import axios from "axios";
+import 'react-toastify/dist/ReactToastify.css';
+import { toast } from "react-toastify";
+
 
 const MatchResultTable = ({
   matches,
@@ -24,18 +27,18 @@ const MatchResultTable = ({
   };
 
   const handleUndo = async () => {
-    if (!lastValidated) return alert("Tidak ada data untuk di-undo.");
+    if (!lastValidated) return toast.error("Tidak ada data untuk di-undo.");
 
     try {
       const res = await axios.post("http://127.0.0.1:8000/undo_validation/", lastValidated);
       console.log("✅ Validasi disimpan:", res.data.message);
-      alert("↩️ Undo berhasil");
+      toast.success("Undo berhasil");
       setMatches((prev) => [lastValidated, ...prev]);
       setLastValidated(null);
     } catch (err) {
       const msg = err.response?.data?.error || err.message || "Unknown error";
-      alert("❌ Gagal undo: " + msg);
-      console.error("❌ UNDO GAGAL:", err.response || err);
+      toast.error("Gagal undo: " + msg);
+      console.error("UNDO GAGAL:", err.response || err);
     }
   };
 
@@ -55,7 +58,7 @@ const MatchResultTable = ({
       const res = await axios.post("http://127.0.0.1:8000/validate/", payload);
       console.log("✅ Respon dari server:", res.data);
 
-      alert("✅ Validasi berhasil disimpan");
+      toast.success("Validasi berhasil disimpan");
 
       const updated = [...matches];
       updated.splice(globalIndex, 1);
@@ -63,8 +66,8 @@ const MatchResultTable = ({
       setLastValidated(match);
     } catch (err) {
       const msg = err.response?.data?.error || err.message || "Unknown error";
-      alert("❌ Gagal menyimpan validasi: " + msg);
-      console.error("❌ VALIDASI GAGAL:", err.response || err);
+      toast.error("Gagal menyimpan validasi: " + msg);
+      console.error("VALIDASI GAGAL:", err.response || err);
     } finally {
       setSavingIndex(null);
     }
@@ -159,6 +162,7 @@ const MatchResultTable = ({
           </button>
         </div>
       </div>
+       <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };
