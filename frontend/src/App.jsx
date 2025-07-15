@@ -1,5 +1,11 @@
 // App.jsx
-import { useState } from "react";
+import React, { useState } from "react";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+} from "@clerk/clerk-react";
 import axios from "axios";
 import Header from "./components/Header";
 import UploadFile from "./components/UploadFile";
@@ -16,15 +22,7 @@ function App() {
   const [recommendedCols, setRecommendedCols] = useState([]);
   const [lastValidated, setLastValidated] = useState(null);
 
-  const fetchRecommendations = async () => {
-    try {
-      const res = await axios.get("http://127.0.0.1:8000/recommend_columns/");
-      setRecommendedCols(res.data.recommended_columns);
-    } catch (err) {
-      alert("❌ Gagal mengambil rekomendasi kolom");
-      console.error(err);
-    }
-  };
+  
 
   const handleUpload = async () => {
     if (!file) return alert("Pilih file terlebih dahulu");
@@ -51,7 +49,8 @@ function App() {
   };
 
   const handleSubmitColumns = async () => {
-    if (selectedColumns.length === 0) return alert("Pilih minimal satu kolom!");
+    if (selectedColumns.length === 0)
+      return alert("Pilih minimal satu kolom!");
     try {
       const res = await axios.post("http://127.0.0.1:8000/process_columns/", {
         columns: selectedColumns,
@@ -84,11 +83,10 @@ function App() {
         }
       );
 
-      // Buat link unduhan
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", "final_cleaned_output.xlsx"); // nama file yang benar
+      link.setAttribute("download", "final_cleaned_output.xlsx");
       document.body.appendChild(link);
       link.click();
     } catch (err) {
@@ -97,37 +95,59 @@ function App() {
     }
   };
 
+  const fetchRecommendations = async () => {
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/recommend_columns/");
+      setRecommendedCols(res.data.recommended_columns);
+    } catch (err) {
+      alert("❌ Gagal mengambil rekomendasi kolom");
+      console.error(err);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 p-4">
-      <div className="w-screen px-4">
-        <div className="w-full">
-          <Header />
-          <UploadFile
-            file={file}
-            setFile={setFile}
-            handleUpload={handleUpload}
-          />
-          <ColumnSelector
-            columns={columns}
-            selectedColumns={selectedColumns}
-            handleCheckboxChange={handleCheckboxChange}
-            handleSubmitColumns={handleSubmitColumns}
-            handleMatch={handleMatch}
-            fetchRecommendations={fetchRecommendations}
-            combinedPreview={combinedPreview}
-          />
-          <RecommendedColumns recommendedCols={recommendedCols} />
-          <MatchResultTable
-            matches={matches}
-            setMatches={setMatches}
-            exportToExcel={exportToExcel}
-            lastValidated={lastValidated}
-            setLastValidated={setLastValidated}
-          />
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 p-4 flex justify-center">
+    <div className="w-full">
+      <Header />
+
+      <SignedOut>
+        <div className="bg-white p-6 rounded-xl text-center shadow-sm">
+          <h2 className="text-xl font-semibold mb-4">
+            Silakan Login untuk melanjutkan
+          </h2>
+          <SignInButton />
+          <span className="mx-2 text-slate-500">atau</span>
+          <SignUpButton />
         </div>
-      </div>
+      </SignedOut>
+
+      <SignedIn>
+        <UploadFile
+          file={file}
+          setFile={setFile}
+          handleUpload={handleUpload}
+        />
+        <ColumnSelector
+          columns={columns}
+          selectedColumns={selectedColumns}
+          handleCheckboxChange={handleCheckboxChange}
+          handleSubmitColumns={handleSubmitColumns}
+          handleMatch={handleMatch}
+          fetchRecommendations={fetchRecommendations}
+          combinedPreview={combinedPreview}
+        />
+        <RecommendedColumns recommendedCols={recommendedCols} />
+        <MatchResultTable
+          matches={matches}
+          setMatches={setMatches}
+          exportToExcel={exportToExcel}
+          lastValidated={lastValidated}
+          setLastValidated={setLastValidated}
+        />
+      </SignedIn>
     </div>
-  );
+  </div>
+);
 }
 
 export default App;
