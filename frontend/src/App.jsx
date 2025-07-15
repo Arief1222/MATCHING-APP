@@ -12,6 +12,10 @@ import UploadFile from "./components/UploadFile";
 import ColumnSelector from "./components/ColumnSelector";
 import RecommendedColumns from "./components/RecommendedColumns";
 import MatchResultTable from "./components/MatchResultTable";
+import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, toast } from "react-toastify";
+
+
 
 function App() {
   const [file, setFile] = useState(null);
@@ -32,10 +36,10 @@ function App() {
 
     try {
       const res = await axios.post("http://127.0.0.1:8000/upload/", formData);
-      alert("✅ File berhasil diupload!");
+      toast.success("File berhasil diupload!");
       setColumns(res.data.columns);
     } catch (err) {
-      alert("❌ Gagal upload file");
+      toast.error("Gagal upload file");
       console.error("Upload error:", err.response?.data || err.message);
     }
   };
@@ -50,15 +54,15 @@ function App() {
 
   const handleSubmitColumns = async () => {
     if (selectedColumns.length === 0)
-      return alert("Pilih minimal satu kolom!");
+      return toast.warn("Pilih minimal satu kolom!");
     try {
       const res = await axios.post("http://127.0.0.1:8000/process_columns/", {
         columns: selectedColumns,
       });
-      alert("✅ Kolom berhasil digabung!");
+      toast.success("Kolom berhasil digabung!");
       setCombinedPreview(res.data.combined_sample);
     } catch (err) {
-      alert("❌ Gagal menggabungkan kolom!");
+      toast.error("Gagal menggabungkan kolom!");
       console.error(err);
     }
   };
@@ -69,7 +73,7 @@ function App() {
       const all = [...res.data.ambiguous, ...res.data.results]; // Ambiguous dulu
       setMatches(all);
     } catch (err) {
-      alert("❌ Matching gagal!");
+      toast.error("Matching gagal!");
       console.error("MATCHING FAILED:", err.response?.data || err);
     }
   };
@@ -90,17 +94,18 @@ function App() {
       document.body.appendChild(link);
       link.click();
     } catch (err) {
-      alert("❌ Gagal mengunduh hasil final");
+      toast.error("Gagal mengunduh hasil final");
       console.error(err);
     }
   };
 
   const fetchRecommendations = async () => {
     try {
+         
       const res = await axios.get("http://127.0.0.1:8000/recommend_columns/");
       setRecommendedCols(res.data.recommended_columns);
     } catch (err) {
-      alert("❌ Gagal mengambil rekomendasi kolom");
+      toast.error("Gagal mengambil rekomendasi kolom");
       console.error(err);
     }
   };
@@ -146,7 +151,9 @@ function App() {
         />
       </SignedIn>
     </div>
+    <ToastContainer position="top-right" autoClose={3000} />
   </div>
+  
 );
 }
 
