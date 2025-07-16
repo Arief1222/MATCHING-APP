@@ -15,6 +15,7 @@ const MatchResultTable = ({
   const [savingIndex, setSavingIndex] = useState(null);
   const itemsPerPage = 10;
   const [currentPage, setCurrentPage] = useState(1);
+   
 
   const totalPages = Math.ceil(matches.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -41,6 +42,8 @@ const MatchResultTable = ({
       console.error("UNDO GAGAL:", err.response || err);
     }
   };
+
+
 
   const handleValidation = async (index, label) => {
     const globalIndex = startIndex + index;

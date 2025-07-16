@@ -27,13 +27,13 @@ function App() {
   const [loading, setLoading] = useState(false); // ⬅️ State loading
 
   const handleUpload = async () => {
-    if (!file) return alert("Pilih file terlebih dahulu");
+    if (!file) return toast.warn("Pilih file terlebih dahulu");
     setLoading(true);
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/upload/", formData);
+      const res = await axios.post("http://127.0.0.1:8001/upload/", formData);
       toast.success("File berhasil diupload!");
       setColumns(res.data.columns);
     } catch (err) {

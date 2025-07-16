@@ -4,35 +4,35 @@ import os
 import pandas as pd
 from django.core.files.storage import default_storage
 from rest_framework.response import Response
+import pandas as pd
+import tempfile
+from api.models import SnapwangiData 
 
 
-def handle_upload_file(request, temp_file_path):
-    # 🔍 DEBUG LOGGING (aman digunakan)
-    print("📥 DEBUG - request.content_type:", request.content_type)
-    print("📥 DEBUG - request.FILES keys:", list(request.FILES.keys()))
-    print("📥 DEBUG - request.POST keys:", list(request.POST.keys()))
-    
+
+
+def upload_snapwangi(request):
     if 'file' not in request.FILES:
-        print("🚫 Tidak ada 'file' di request.FILES.")
-        return Response({'error': 'No file uploaded'}, status=400)
+        return Response({'error': 'File tidak ditemukan'}, status=400)
 
     file = request.FILES['file']
-    print(f"✅ File diterima: {file.name}, size: {file.size} bytes, content_type: {file.content_type}")
 
-    # Simpan file sementara
-    with default_storage.open(temp_file_path, 'wb+') as destination:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
         for chunk in file.chunks():
-            destination.write(chunk)
-    print(f"💾 File disimpan sementara di: {temp_file_path}")
+            tmp.write(chunk)
+        tmp_path = tmp.name
 
-    # Baca dan respon kolom dari Excel
     try:
-        df = pd.read_excel(temp_file_path)
-        print("📊 Kolom berhasil dibaca:", df.columns.tolist())
-        return Response({'columns': df.columns.tolist()})
+        df = pd.read_excel(tmp_path)
+        df = df.dropna(how='all').reset_index(drop=True)
+
+        records = df.to_dict(orient='records')
+        for row in records:
+            SnapwangiData.objects.create(data=row)
+
+        return Response({'message': f'{len(records)} data berhasil dimasukkan ke Snapwangi'})
     except Exception as e:
-        print("❌ Gagal membaca Excel:", str(e))
-        return Response({'error': str(e)}, status=400)
+        return Response({'error': str(e)}, status=500)
 
 
 

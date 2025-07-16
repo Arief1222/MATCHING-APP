@@ -91,12 +91,11 @@ tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': tmpPostgres.path.decode('utf-8').replace('/', ''),
-        'USER': tmpPostgres.username,
-        'PASSWORD': tmpPostgres.password,
-        'HOST': tmpPostgres.hostname,
-        'PORT': 5432,
-        'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'your-super-secret-and-long-postgres-password',
+        'HOST': 'localhost',
+        'PORT': '54322',
     }
 }
 

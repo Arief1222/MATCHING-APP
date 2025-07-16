@@ -6,25 +6,25 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import FileResponse
 from django.core.files.storage import default_storage
-from .models import Snapwangi
 import os
+from django.views.decorators.csrf import csrf_exempt
 from .services.match_engine import run_faiss_matching
-from .utils.file_handler import handle_upload_file, get_recommended_columns, process_combined_columns
-
-TEMP_FILE_PATH = "uploaded.xlsx"
+from .utils.file_handler import upload_snapwangi, get_recommended_columns, process_combined_columns
+ 
 COMBINED_PATH = "combined.json"
 EXPORT_CSV_PATH = "matching_result_faiss_validated.csv"
 
 current_progress = {'current': 0, 'total': 1}
 
+
 @api_view(['GET'])
 def progress_faiss(request):
     return Response(current_progress)
 
-
+@csrf_exempt
 @api_view(['POST'])
 def upload_file(request):
-    return handle_upload_file(request, TEMP_FILE_PATH)
+    return upload_snapwangi(request)
 
 
 @api_view(['GET'])
@@ -177,6 +177,9 @@ def export_cleaned_results(request):
     from django.http import FileResponse
     return FileResponse(open("final_cleaned_output.xlsx", 'rb'), as_attachment=True, filename="final_cleaned_output.xlsx")
 
+@api_view(['GET'])
+def get_progress(request):
+    return Response(current_match_progress)
 
 @api_view(['POST'])
 def upload_database(request):
@@ -222,3 +225,5 @@ def upload_database(request):
         print('[ERROR upload_database]', str(e))
         traceback.print_exc()
         return Response({'error': str(e)}, status=400)
+    
+    

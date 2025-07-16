@@ -1,20 +1,8 @@
-
 from django.db import models
-# Create your models here.
 
-class Snapwangi(models.Model):
-    data = models.JSONField(null=False, blank=False, default=dict)
+class SnapwangiData(models.Model):
+    data = models.JSONField()  # Seluruh baris Excel disimpan dalam satu kolom JSON
+    uploaded_at = models.DateTimeField(auto_now_add=True)
 
-class Duplikat(models.Model):
-    data = models.JSONField(null=False, blank=False, default=dict)
-
-class Kopindag(models.Model):
-    data = models.JSONField(null=False, blank=False, default=dict)
-
-class Koperasi(models.Model):
-    data = models.JSONField(null=False, blank=False, default=dict)
-
-class KopindagKoperasi(models.Model):
-    data = models.JSONField(null=False, blank=False, default=dict)
-
-# Create your models here.
+    def __str__(self):
+        return f"Data {self.id} diupload {self.uploaded_at}"
