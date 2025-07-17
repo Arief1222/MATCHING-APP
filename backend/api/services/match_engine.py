@@ -1,5 +1,3 @@
-# services/match_engine.py
-# Berisi semua fungsi berat: FAISS, fuzzy, XGBoost.
 import os
 import pandas as pd
 import numpy as np

@@ -1,8 +1,10 @@
 from django.db import models
 
-class SnapwangiData(models.Model):
-    data = models.JSONField()  # Seluruh baris Excel disimpan dalam satu kolom JSON
+class MatchingData(models.Model):
+    source = models.CharField(max_length=20)  # 'snapwangi' atau 'kopindag'
+    data = models.JSONField()
+    matched_with = models.JSONField(null=True, blank=True)  # hanya terisi kalau cocok
+    confidence = models.FloatField(null=True, blank=True)
+    fuzzy_score = models.FloatField(null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Data {self.id} diupload {self.uploaded_at}"
