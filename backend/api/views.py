@@ -4,17 +4,213 @@ from django.http import FileResponse
 from django.core.files.storage import default_storage
 import os
 from django.views.decorators.csrf import csrf_exempt
-from .services.match_engine import run_faiss_matching
+#from .services.match_engine import run_faiss_matching
 from django.views.decorators.csrf import csrf_exempt
-from api.models import MatchingData
 from .utils.Upload_handler import delete_table_by_name, export_table_to_excel, get_table_data, handle_uploaded_file #get_recommended_columns, process_combined_columns
- 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+# from django.core.files.storage import default_storage
+# from django.core.files.base import ContentFile
+import pandas as pd
+import uuid
+from .models import DataTable, MatchingResult, LabelingData
+from .services.match_engine import MatchingEngine
+from .services.supabase_service import SupabaseService
+
+
+
 COMBINED_PATH = "combined.json"
 EXPORT_CSV_PATH = "matching_result_faiss_validated.csv"
 TEMP_FILE_PATH ="upload.xlxs"
 current_progress = {'current': 0, 'total': 1}
 
+class GetAvailableTablesView(APIView):
+    def get(self, request):
+        """Get daftar tabel yang tersedia"""
+        try:
+            # Get from Django model
+            tables = DataTable.objects.filter(created_by=request.user).values(
+                'id', 'name', 'original_filename', 'row_count', 'column_names', 'created_at'
+            )
+            
+            return Response({'tables': list(tables)})
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
+class GetRecommendedColumnsView(APIView):
+    def post(self, request):
+        """Get rekomendasi kolom untuk matching"""
+        try:
+            table_name = request.data.get('table_name')
+            table_b = request.data.get('table_b')  # Optional untuk cross-table matching
+            
+            if not table_name:
+                return Response({'error': 'table_name required'}, status=400)
+            
+            matching_engine = MatchingEngine()
+            
+            # Get recommendations untuk table utama
+            recommendations = matching_engine.get_recommended_columns(table_name)
+            
+            result = {
+                'table_a_recommendations': recommendations
+            }
+            
+            # Jika ada table_b, berikan rekomendasi mapping
+            if table_b:
+                column_mapping = matching_engine.recommend_column_mapping(table_name, table_b)
+                result['column_mapping_recommendations'] = column_mapping
+                result['table_b_recommendations'] = matching_engine.get_recommended_columns(table_b)
+            
+            return Response(result)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+class StartMatchingView(APIView):
+    def post(self, request):
+        """Mulai proses matching"""
+        try:
+            table_a = request.data.get('table_a')
+            table_b = request.data.get('table_b')  # Optional untuk self-matching
+            columns_a = request.data.get('columns_a')
+            columns_b = request.data.get('columns_b')  # Optional
+            
+            if not table_a or not columns_a:
+                return Response({'error': 'table_a and columns_a required'}, status=400)
+            
+            matching_engine = MatchingEngine()
+            result = matching_engine.run_complete_matching(table_a, table_b, columns_a, columns_b)
+            
+            if 'error' in result:
+                return Response({'error': result['error']}, status=500)
+            
+            return Response(result)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+class GetMatchingResultsView(APIView):
+    def get(self, request):
+        """Get hasil matching berdasarkan batch_id"""
+        try:
+            batch_id = request.query_params.get('batch_id')
+            result_type = request.query_params.get('type', 'all')  # all, match, unmatch, enriched
+            
+            if not batch_id:
+                return Response({'error': 'batch_id required'}, status=400)
+            
+            query = MatchingResult.objects.filter(batch_id=batch_id)
+            
+            if result_type != 'all':
+                query = query.filter(status=result_type.upper())
+            
+            results = query.values()
+            
+            return Response({
+                'results': list(results),
+                'total_count': len(results)
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+class GetLabelingDataView(APIView):
+    def get(self, request):
+        """Get data yang perlu dilabeling"""
+        try:
+            # Get unlabeled data
+            unlabeled = LabelingData.objects.filter(
+                label__isnull=True
+            ).values()
+            
+            return Response({
+                'unlabeled_data': list(unlabeled),
+                'total_count': len(unlabeled)
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+class SubmitLabelingView(APIView):
+    def post(self, request):
+        """Submit hasil labeling manual"""
+        try:
+            labeling_id = request.data.get('labeling_id')
+            label = request.data.get('label')  # 'MATCH' atau 'UNMATCH'
+            
+            if not labeling_id or not label:
+                return Response({'error': 'labeling_id and label required'}, status=400)
+            
+            if label not in ['MATCH', 'UNMATCH']:
+                return Response({'error': 'label must be MATCH or UNMATCH'}, status=400)
+            
+            # Update labeling data
+            labeling_data = LabelingData.objects.get(id=labeling_id)
+            labeling_data.label = label
+            labeling_data.confirmed_by = request.user
+            labeling_data.save()
+            
+            return Response({
+                'message': 'Labeling submitted successfully',
+                'labeling_id': labeling_id,
+                'label': label
+            })
+            
+        except LabelingData.DoesNotExist:
+            return Response({'error': 'Labeling data not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+class RetrainModelView(APIView):
+    def post(self, request):
+        """Retrain XGBoost model dari data validasi"""
+        try:
+            matching_engine = MatchingEngine()
+            result = matching_engine.train_xgb_from_validasi()
+            
+            return Response({
+                'message': 'Model retrain completed',
+                'result': result
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+class GetMatchingStatsView(APIView):
+    def get(self, request):
+        """Get statistik matching"""
+        try:
+            batch_id = request.query_params.get('batch_id')
+            
+            if batch_id:
+                # Stats untuk batch tertentu
+                stats = MatchingResult.objects.filter(batch_id=batch_id).values('status').annotate(
+                    count=models.Count('id')
+                )
+            else:
+                # Stats keseluruhan
+                stats = MatchingResult.objects.values('status').annotate(
+                    count=models.Count('id')
+                )
+            
+            # Labeling stats
+            labeling_stats = {
+                'total_unlabeled': LabelingData.objects.filter(label__isnull=True).count(),
+                'total_labeled': LabelingData.objects.filter(label__isnull=False).count(),
+                'match_labels': LabelingData.objects.filter(label='MATCH').count(),
+                'unmatch_labels': LabelingData.objects.filter(label='UNMATCH').count()
+            }
+            
+            return Response({
+                'matching_stats': list(stats),
+                'labeling_stats': labeling_stats
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
 @api_view(['GET'])
 def progress_faiss(request):

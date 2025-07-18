@@ -1,8 +1,13 @@
 import os
-from dotenv import load_dotenv
+
 from urllib.parse import urlparse, parse_qsl
 
-load_dotenv()
+from dotenv import load_dotenv
+import os
+
+# Path ke .env
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'supabase-project', '.env')
+load_dotenv(dotenv_path)
 
 """
 Django settings for matching_project project.
@@ -145,6 +150,11 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "http://localhost:8000")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_DB_SCHEMA = os.getenv("SUPABASE_DB_SCHEMA", "public")
+
 
 
 
