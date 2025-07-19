@@ -56,13 +56,6 @@ const ColumnSelector = ({
         >
           <span>⬇️</span> Download
         </button>
-
-        <button
-          onClick={fetchRecommendations}
-          className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-2 rounded-lg hover:from-amber-600 hover:to-amber-700 transition-all shadow-sm font-medium flex items-center justify-center gap-1 text-sm"
-        >
-          <span>🎯</span> Rekomendasi
-        </button>
       </div>
 
       {combinedPreview.length > 0 && (

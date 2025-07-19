@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   SignedIn,
   SignedOut,
@@ -8,8 +8,8 @@ import {
 import axios from "axios";
 import ClipLoader from "react-spinners/ClipLoader";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
+import "react-toastify/dist/ReactToastify.css";
 import Header from "./components/Header";
 import UploadFile from "./components/UploadFile";
 import ColumnSelector from "./components/ColumnSelector";
@@ -18,31 +18,60 @@ import MatchResultTable from "./components/MatchResultTable";
 
 function App() {
   const [file, setFile] = useState(null);
+  const [tableName, setTableName] = useState("");
   const [columns, setColumns] = useState([]);
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [combinedPreview, setCombinedPreview] = useState([]);
   const [matches, setMatches] = useState([]);
   const [recommendedCols, setRecommendedCols] = useState([]);
+  const [useRecommendation, setUseRecommendation] = useState(null);
   const [lastValidated, setLastValidated] = useState(null);
+  const [showRecommendedCols, setShowRecommendedCols] = useState(false);
+  const [skipColumnSelection, setSkipColumnSelection] = useState(false);
   const [loading, setLoading] = useState(false); // ⬅️ State loading
 
-  const handleUpload = async () => {
-    if (!file) return toast.warn("Pilih file terlebih dahulu");
-    setLoading(true);
-    const formData = new FormData();
-    formData.append("file", file);
+useEffect(() => {
+    // ✅ Reset hanya sekali saat komponen pertama kali dimount
+    setRecommendedCols([]);
+    setShowRecommendedCols(false);
+    setSkipColumnSelection(false);
+    setSelectedColumns([]);
+  }, []);
 
-    try {
-      const res = await axios.post("http://127.0.0.1:8001/upload/", formData);
-      toast.success("File berhasil diupload!");
-      setColumns(res.data.columns);
-    } catch (err) {
-      toast.error("Gagal upload file");
-      console.error(err);
-    } finally {
-      setLoading(false);
+const handleUpload = async () => {
+  if (!file) return toast.warn("Pilih file terlebih dahulu");
+  if (!tableName) return toast.warn("Isi nama tabel terlebih dahulu");
+  setLoading(true);
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("table_name", tableName);
+
+  try {
+    const res = await axios.post("http://127.0.0.1:8001/upload/", formData);
+    toast.success("File berhasil diupload!");
+    setColumns(res.data.columns); // Simpan semua kolom
+
+    // Ambil rekomendasi kolom dari backend
+    const recRes = await axios.post("http://127.0.0.1:8001/recommend-columns/", {
+      table_name: tableName
+    });
+
+    const rekomendasi = recRes.data?.table_a_recommendations || [];
+    if (rekomendasi.length > 0) {
+      setRecommendedCols(rekomendasi.map((item) => item.column));
+    } else {
+      // Fallback: jika tidak ada rekomendasi, pakai semua kolom
+      setRecommendedCols(res.data.columns || []);
     }
-  };
+  } catch (err) {
+    toast.error("Gagal upload atau ambil rekomendasi");
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleCheckboxChange = (e) => {
     const value = e.target.value;
@@ -154,8 +183,39 @@ const LoadingOverlay = () => (
           <UploadFile
             file={file}
             setFile={setFile}
+            tableName={tableName}
+            setTableName={setTableName}
             handleUpload={handleUpload}
           />
+{recommendedCols.length > 0 && !useRecommendation && (
+<div className="mb-4 px-4">
+<p className="text-sm text-slate-700 mb-2 font-medium">
+Gunakan kolom yang direkomendasikan?
+</p>
+<div className="flex gap-3">
+<button
+onClick={() => {
+setSelectedColumns(recommendedCols);
+setSkipColumnSelection(true);
+toast.success("Menggunakan kolom yang direkomendasikan!");
+}}
+className="bg-green-600 text-white px-4 py-2 rounded"
+>
+Ya
+</button>
+<button
+onClick={() => {
+setShowRecommendedCols(true);
+setUseRecommendation(true);
+}}
+className="bg-gray-500 text-white px-4 py-2 rounded"
+>
+Tidak
+</button>
+</div>
+</div>
+)}
+
           <ColumnSelector
             columns={columns}
             selectedColumns={selectedColumns}
@@ -165,7 +225,15 @@ const LoadingOverlay = () => (
             fetchRecommendations={fetchRecommendations}
             combinedPreview={combinedPreview}
           />
-          <RecommendedColumns recommendedCols={recommendedCols} />
+
+  {showRecommendedCols && useRecommendation && (
+  <RecommendedColumns
+    recommendedCols={recommendedCols}
+    handleCheckboxChange={handleCheckboxChange}
+    selectedColumns={selectedColumns}
+  />
+          )}
+          
           <MatchResultTable
             matches={matches}
             setMatches={setMatches}

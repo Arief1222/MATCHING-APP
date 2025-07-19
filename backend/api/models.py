@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import User
 import json
 
+
 class DataTable(models.Model):
     name = models.CharField(max_length=255)
     original_filename = models.CharField(max_length=255)
