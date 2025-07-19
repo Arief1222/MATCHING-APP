@@ -1,4 +1,5 @@
 from rest_framework.decorators import api_view
+from background_task import background
 from rest_framework.response import Response
 from django.http import FileResponse
 from django.core.files.storage import default_storage
@@ -14,7 +15,7 @@ from rest_framework import status
 # from django.core.files.base import ContentFile
 import pandas as pd
 import uuid
-from .models import DataTable, MatchingResult, LabelingData
+from .models import DataTable, MatchingResult, LabelingData, MatchingJob
 from .services.match_engine import MatchingEngine
 from .services.supabase_service import SupabaseService
 
@@ -25,6 +26,20 @@ EXPORT_CSV_PATH = "matching_result_faiss_validated.csv"
 TEMP_FILE_PATH ="upload.xlxs"
 current_progress = {'current': 0, 'total': 1}
 
+class JobStatusView(APIView):
+    def get(self, request, job_id):
+        try:
+            job = MatchingJob.objects.get(job_id=job_id)
+            return Response({
+                "job_id": job.job_id,
+                "table_name": job.table_name,
+                "status": job.status,
+                "start_time": job.start_time,
+                "end_time": job.end_time,
+            })
+        except MatchingJob.DoesNotExist:
+            return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
+        
 class GetAvailableTablesView(APIView):
     def get(self, request):
         """Get daftar tabel yang tersedia"""
@@ -68,27 +83,35 @@ class GetRecommendedColumnsView(APIView):
             
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+        
+@background(schedule=1)
+def run_matching_background(job_id, table_a, table_b, columns_a, columns_b):
+    engine = MatchingEngine()
+    engine.run_complete_matching(table_a, table_b, columns_a, columns_b)
 
+# API view untuk start matching
 class StartMatchingView(APIView):
     def post(self, request):
-        """Mulai proses matching"""
+        """Mulai proses matching secara background"""
         try:
             table_a = request.data.get('table_a')
-            table_b = request.data.get('table_b')  # Optional untuk self-matching
+            table_b = request.data.get('table_b')
             columns_a = request.data.get('columns_a')
-            columns_b = request.data.get('columns_b')  # Optional
+            columns_b = request.data.get('columns_b')
             
             if not table_a or not columns_a:
                 return Response({'error': 'table_a and columns_a required'}, status=400)
+
+            job_id = str(uuid.uuid4())
             
             matching_engine = MatchingEngine()
-            result = matching_engine.run_complete_matching(table_a, table_b, columns_a, columns_b)
-            
-            if 'error' in result:
-                return Response({'error': result['error']}, status=500)
-            
-            return Response(result)
-            
+            matching_engine.save_job_status(job_id, table_a)  # Simpan status 'Pending'
+
+            # Kirim ke background
+            run_matching_background(job_id, table_a, table_b, columns_a, columns_b)
+
+            return Response({'job_id': job_id, 'status': 'Pending'})
+
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 

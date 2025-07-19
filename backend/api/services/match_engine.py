@@ -13,23 +13,29 @@ from imblearn.over_sampling import SMOTE
 import uuid
 from datetime import datetime
 from .supabase_service import SupabaseService
-from api.models import MatchingResult, LabelingData
-# from rest_framework.views import APIView
-# from rest_framework.response import Response
-# from rest_framework import status
-# from django.core.files.storage import default_storage
-# from django.core.files.base import ContentFile
-# import pandas as pd
-# import uuid
-# from api.models import DataTable, MatchingResult, LabelingData
-# from api.services.match_engine import MatchingEngine
-# from api.services.supabase_service import SupabaseService
+from api.models import MatchingResult, LabelingData, MatchingJob
+
 
 class MatchingEngine:
     def __init__(self):
         self.supabase_service = SupabaseService()
         self.XGB_MODEL_PATH = "xgb_model_faiss.json"
         self.TRAINING_DATA_PATH = "training_data.json"
+        
+    def save_job_status(self, job_id: str, table_name: str):
+        MatchingJob.objects.create(
+            job_id=job_id,
+            table_name=table_name,
+            status="Pending",
+            start_time=datetime.utcnow()
+        )
+
+    def update_job_status(self, job_id: str, status: str):
+        job = MatchingJob.objects.filter(job_id=job_id).first()
+        if job:
+            job.status = status
+            job.end_time = datetime.utcnow()
+            job.save()
         
     def get_recommended_columns(self, table_name: str):
         """Analisis dan rekomendasikan kolom untuk matching"""
@@ -233,6 +239,8 @@ class MatchingEngine:
             # Save to database
             self.save_matching_results(categorized_results, batch_id)
             
+            self.update_job_status(batch_id, "Success")
+            
             return {
                 'batch_id': batch_id,
                 'total_matches': len(categorized_results['matches']),
@@ -245,6 +253,7 @@ class MatchingEngine:
             
         except Exception as e:
             print(f"Error in run_complete_matching: {e}")
+            self.update_job_status(batch_id, "Failed")
             return {'error': str(e)}
     
     def process_matching_results(self, results: list):
