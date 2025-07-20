@@ -147,6 +147,7 @@ class StartMatchingView(APIView):
             table_b = request.data.get('table_b')
             columns_a = request.data.get('columns_a')
             columns_b = request.data.get('columns_b')
+           
             
             if not table_a or not columns_a:
                 return Response({'error': 'table_a and columns_a required'}, status=400)

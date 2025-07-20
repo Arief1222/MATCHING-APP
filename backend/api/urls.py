@@ -1,4 +1,5 @@
 from django.urls import path
+from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
     JobStatusView,
     MatchingJobListView,
@@ -27,6 +28,7 @@ urlpatterns = [
     path('retrain-model/', RetrainModelView.as_view(), name='retrain_model'),
     path('matching-stats/', GetMatchingStatsView.as_view(), name='matching_stats'),
     path('matching-jobs/', MatchingJobListView.as_view(), name='matching_jobs'),
+    path('api-token-auth/', obtain_auth_token),
     path('job-status/<str:job_id>/', JobStatusView.as_view(), name='job_status')
 ]
 

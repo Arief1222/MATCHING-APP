@@ -416,10 +416,12 @@ function App() {
                 selectedColumns={selectedColumns}
                 handleCheckboxChange={handleCheckboxChange}
                 handleSubmitColumns={handleSubmitColumns}
+                handleMatch={handleMatch}  
+                combinedPreview={combinedPreview || []}
               />
             )}
 
-            {combinedPreview.length > 0 && (
+            {/* {combinedPreview.length > 0 && (
               <div className="mb-4">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">
@@ -456,7 +458,7 @@ function App() {
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
 
 
             <JobHistoryTable />

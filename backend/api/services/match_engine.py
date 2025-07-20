@@ -206,56 +206,67 @@ class MatchingEngine:
             print(f"Error in run_faiss_matching: {e}")
             return []
     
-    def run_complete_matching(self, table_a: str, table_b: str, columns_a: list, columns_b: list = None):
-        """Jalankan matching lengkap dengan semua algoritma"""
-        try:
-            batch_id = str(uuid.uuid4())
-            
-            # Prepare data
-            df_a = self.prepare_combined_data(table_a, columns_a)
-            if df_a is None:
-                return {'error': 'Failed to prepare data from table A'}
-            
-            # Tentukan jenis matching
-            if table_b is None or table_b == table_a:
-                df_combined = df_a
-                is_self_matching = True
-                reference_table = table_a
-            else:
-                df_b = self.prepare_combined_data(table_b, columns_b)
-                if df_b is None:
-                    return {'error': 'Failed to prepare data from table B'}
-                df_combined = pd.concat([df_a, df_b], ignore_index=True)
-                is_self_matching = False
-                reference_table = table_b
-            
-            # Run matching algorithms
-            faiss_results = self.run_faiss_matching(df_combined, batch_id, table_a, reference_table)
-            
-            # Process results dengan XGBoost jika tersedia
-            # PERBAIKAN: Tambahkan parameter is_self_matching
-            processed_results = self.process_matching_results(faiss_results, is_self_matching)
-            
-            # Categorize results
-            categorized_results = self.categorize_results(processed_results, is_self_matching)
-            
-            # Save to database
-            self.save_matching_results(categorized_results, batch_id)
-            
-            return {
-                'batch_id': batch_id,
-                'matching_type': 'self_matching' if is_self_matching else 'cross_matching',
-                'total_matches': len(categorized_results['matches']),
-                'total_unmatches': len(categorized_results['unmatches']),
-                'total_enriched': len(categorized_results.get('enriched', [])),
-                'ambiguous_count': len(categorized_results['ambiguous']),
-                'sample_matches': categorized_results['matches'][:10],
-                'sample_ambiguous': categorized_results['ambiguous'][:10]
-            }
-            
-        except Exception as e:
-            print(f"Error in run_complete_matching: {e}")
-            return {'error': str(e)}
+    def run_complete_matching(self, table_a: str, table_b: str, columns_a: list, columns_b: list = None, job_id: str = None):
+            """Jalankan matching lengkap dengan semua algoritma"""
+            try:
+                batch_id = str(uuid.uuid4())
+                
+                # Prepare data
+                df_a = self.prepare_combined_data(table_a, columns_a)
+                if df_a is None:
+                    if job_id:
+                        self.update_job_status(job_id, "Failed")
+                    return {'error': 'Failed to prepare data from table A'}
+                
+                # Tentukan jenis matching
+                if table_b is None or table_b == table_a:
+                    df_combined = df_a
+                    is_self_matching = True
+                    reference_table = table_a
+                else:
+                    df_b = self.prepare_combined_data(table_b, columns_b)
+                    if df_b is None:
+                        if job_id:
+                            self.update_job_status(job_id, "Failed")
+                        return {'error': 'Failed to prepare data from table B'}
+                    df_combined = pd.concat([df_a, df_b], ignore_index=True)
+                    is_self_matching = False
+                    reference_table = table_b
+                
+                # Run matching algorithms
+                faiss_results = self.run_faiss_matching(df_combined, batch_id, table_a, reference_table)
+                
+                # Process results dengan XGBoost jika tersedia
+                processed_results = self.process_matching_results(faiss_results, is_self_matching)
+                
+                # Categorize results
+                categorized_results = self.categorize_results(processed_results, is_self_matching)
+                
+                # Save to database
+                self.save_matching_results(categorized_results, batch_id)
+
+                # ✅ Update job status to Success
+                if job_id:
+                    self.update_job_status(job_id, "Success")
+                
+                return {
+                    'batch_id': batch_id,
+                    'matching_type': 'self_matching' if is_self_matching else 'cross_matching',
+                    'total_matches': len(categorized_results['matches']),
+                    'total_unmatches': len(categorized_results['unmatches']),
+                    'total_enriched': len(categorized_results.get('enriched', [])),
+                    'ambiguous_count': len(categorized_results['ambiguous']),
+                    'sample_matches': categorized_results['matches'][:10],
+                    'sample_ambiguous': categorized_results['ambiguous'][:10]
+                }
+                
+            except Exception as e:
+                print(f"Error in run_complete_matching: {e}")
+                # ❌ Update status to Failed on error
+                if job_id:
+                    self.update_job_status(job_id, "Failed")
+                return {'error': str(e)}
+
     
     def process_matching_results(self, results: list, is_self_matching: bool = False):
         """Process hasil matching dengan XGBoost jika tersedia"""
