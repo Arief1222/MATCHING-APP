@@ -169,7 +169,7 @@ class MatchingEngine:
                     D, I = index.search(X_j, 6)
                     
                     for k in range(end_j - start_j):
-                        for r in range(1, 6):  # Skip self match
+                        for r in range(1, 6): 
                             idx_i = I[k][r]
                             if idx_i == -1 or idx_i >= (end_i - start_i):
                                 continue
@@ -177,7 +177,7 @@ class MatchingEngine:
                             global_i = start_i + idx_i
                             global_j = start_j + k
                             
-                            if global_i == global_j:  # Skip self match
+                            if global_i == global_j:  
                                 continue
                                 
                             dist = D[k][r]
@@ -216,36 +216,38 @@ class MatchingEngine:
             if df_a is None:
                 return {'error': 'Failed to prepare data from table A'}
             
-            # Jika table_b tidak ada, lakukan self-matching
+            # Tentukan jenis matching
             if table_b is None or table_b == table_a:
                 df_combined = df_a
                 is_self_matching = True
+                reference_table = table_a
             else:
                 df_b = self.prepare_combined_data(table_b, columns_b)
                 if df_b is None:
                     return {'error': 'Failed to prepare data from table B'}
                 df_combined = pd.concat([df_a, df_b], ignore_index=True)
                 is_self_matching = False
+                reference_table = table_b
             
             # Run matching algorithms
-            faiss_results = self.run_faiss_matching(df_combined, batch_id, table_a, table_b or table_a)
+            faiss_results = self.run_faiss_matching(df_combined, batch_id, table_a, reference_table)
             
-            # Process results dengan XGBoost jika model tersedia
-            processed_results = self.process_matching_results(faiss_results)
+            # Process results dengan XGBoost jika tersedia
+            # PERBAIKAN: Tambahkan parameter is_self_matching
+            processed_results = self.process_matching_results(faiss_results, is_self_matching)
             
             # Categorize results
-            categorized_results = self.categorize_results(processed_results)
+            categorized_results = self.categorize_results(processed_results, is_self_matching)
             
             # Save to database
             self.save_matching_results(categorized_results, batch_id)
             
-            self.update_job_status(batch_id, "Success")
-            
             return {
                 'batch_id': batch_id,
+                'matching_type': 'self_matching' if is_self_matching else 'cross_matching',
                 'total_matches': len(categorized_results['matches']),
                 'total_unmatches': len(categorized_results['unmatches']),
-                'total_enriched': len(categorized_results['enriched']),
+                'total_enriched': len(categorized_results.get('enriched', [])),
                 'ambiguous_count': len(categorized_results['ambiguous']),
                 'sample_matches': categorized_results['matches'][:10],
                 'sample_ambiguous': categorized_results['ambiguous'][:10]
@@ -253,10 +255,9 @@ class MatchingEngine:
             
         except Exception as e:
             print(f"Error in run_complete_matching: {e}")
-            self.update_job_status(batch_id, "Failed")
             return {'error': str(e)}
     
-    def process_matching_results(self, results: list):
+    def process_matching_results(self, results: list, is_self_matching: bool = False):
         """Process hasil matching dengan XGBoost jika tersedia"""
         try:
             if not results:
@@ -270,6 +271,7 @@ class MatchingEngine:
                 try:
                     model = xgb.XGBClassifier()
                     model.load_model(self.XGB_MODEL_PATH)
+                    
                     df_results['fuzzy_combined'] = df_results['fuzzy_score']
                     X = df_results[['fuzzy_combined', 'faiss_score']]
                     proba = model.predict_proba(X)[:, 1]
@@ -289,9 +291,12 @@ class MatchingEngine:
             
             # Determine ambiguous cases
             df_results['ambiguous'] = (
-                (df_results['fuzzy_score'].between(85, 90)) |
+                (df_results['fuzzy_score'].between(75, 90)) |
                 ((df_results['confidence'] >= 0.3) & (df_results['confidence'] <= 0.7))
             ).astype(int)
+            
+            # PERBAIKAN: Tambahkan flag is_self_matching
+            df_results['is_self_matching'] = is_self_matching
             
             return df_results.to_dict('records')
             
@@ -299,7 +304,7 @@ class MatchingEngine:
             print(f"Error in process_matching_results: {e}")
             return results
     
-    def categorize_results(self, results: list):
+    def categorize_results(self, results: list, is_self_matching: bool = False):
         """Kategorikan hasil matching"""
         matches = []
         unmatches = []
@@ -310,20 +315,25 @@ class MatchingEngine:
             if result.get('ambiguous', 0) == 1:
                 ambiguous.append(result)
             elif result.get('predicted', 0) == 1 or result.get('fuzzy_score', 0) > 90:
-                # Determine if it's a match or enrichment
-                if result.get('confidence', 0) > 0.8:
+                # PERBAIKAN: Enrichment hanya untuk cross-table matching
+                if not is_self_matching and result.get('confidence', 0) > 0.8:
                     enriched.append(result)
                 else:
                     matches.append(result)
             else:
                 unmatches.append(result)
         
-        return {
+        # PERBAIKAN: Return enriched hanya jika bukan self-matching
+        result_dict = {
             'matches': matches,
             'unmatches': unmatches,
-            'enriched': enriched,
             'ambiguous': ambiguous
         }
+        
+        if not is_self_matching:
+            result_dict['enriched'] = enriched
+        
+        return result_dict
     
     def save_matching_results(self, categorized_results: dict, batch_id: str):
         """Simpan hasil matching ke database"""
@@ -352,17 +362,18 @@ class MatchingEngine:
                     confidence_score=result.get('confidence', 0.0)
                 )
             
-            # Save enriched
-            for result in categorized_results['enriched']:
-                MatchingResult.objects.create(
-                    batch_id=batch_id,
-                    source_table=result['source_table'],
-                    reference_table=result['reference_table'],
-                    matching_algorithm='COMBINED',
-                    matched_data=result,
-                    status='ENRICHED',
-                    confidence_score=result.get('confidence', 0.0)
-                )
+            # PERBAIKAN: Save enriched hanya jika ada
+            if 'enriched' in categorized_results:
+                for result in categorized_results['enriched']:
+                    MatchingResult.objects.create(
+                        batch_id=batch_id,
+                        source_table=result['source_table'],
+                        reference_table=result['reference_table'],
+                        matching_algorithm='COMBINED',
+                        matched_data=result,
+                        status='ENRICHED',
+                        confidence_score=result.get('confidence', 0.0)
+                    )
             
             # Save ambiguous to labeling table
             for result in categorized_results['ambiguous']:
@@ -374,7 +385,8 @@ class MatchingEngine:
                     reference_table=result['reference_table']
                 )
             
-            print(f"✅ Saved {len(categorized_results['matches'])} matches, {len(categorized_results['unmatches'])} unmatches, {len(categorized_results['enriched'])} enriched, {len(categorized_results['ambiguous'])} ambiguous")
+            enriched_count = len(categorized_results.get('enriched', []))
+            print(f"✅ Saved {len(categorized_results['matches'])} matches, {len(categorized_results['unmatches'])} unmatches, {enriched_count} enriched, {len(categorized_results['ambiguous'])} ambiguous")
             
         except Exception as e:
             print(f"Error saving matching results: {e}")

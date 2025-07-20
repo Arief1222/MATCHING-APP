@@ -23,7 +23,7 @@ urlpatterns = [
     path('submit-labeling/', SubmitLabelingView.as_view(), name='submit_labeling'),
     path('retrain-model/', RetrainModelView.as_view(), name='retrain_model'),
     path('matching-stats/', GetMatchingStatsView.as_view(), name='matching_stats'),
-     path('job-status/<str:job_id>/', JobStatusView.as_view(), name='job_status')
+    path('job-status/<str:job_id>/', JobStatusView.as_view(), name='job_status')
 ]
 
 # from django.urls import path

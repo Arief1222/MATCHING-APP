@@ -15,6 +15,8 @@ from rest_framework import status
 # from django.core.files.base import ContentFile
 import pandas as pd
 import uuid
+from datetime import datetime
+import logging
 from .models import DataTable, MatchingResult, LabelingData, MatchingJob
 from .services.match_engine import MatchingEngine
 from .services.supabase_service import SupabaseService
@@ -84,10 +86,23 @@ class GetRecommendedColumnsView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=500)
         
+logger = logging.getLogger(__name__)
+
 @background(schedule=1)
 def run_matching_background(job_id, table_a, table_b, columns_a, columns_b):
     engine = MatchingEngine()
-    engine.run_complete_matching(table_a, table_b, columns_a, columns_b)
+    try:
+        engine.run_complete_matching(table_a, table_b, columns_a, columns_b)
+
+        # Setelah sukses:
+        engine.update_job_status(job_id=job_id, status="Success")
+        logger.info(f"Matching job {job_id} completed successfully.")
+    
+    except Exception as e:
+        # Kalau error:
+        engine.update_job_status(job_id=job_id, status="Failed")
+        logger.error(f"Matching job {job_id} failed: {str(e)}")
+        raise e
 
 # API view untuk start matching
 class StartMatchingView(APIView):
@@ -201,7 +216,7 @@ class RetrainModelView(APIView):
             
         except Exception as e:
             return Response({'error': str(e)}, status=500)
-
+        
 class GetMatchingStatsView(APIView):
     def get(self, request):
         """Get statistik matching"""
@@ -213,11 +228,19 @@ class GetMatchingStatsView(APIView):
                 stats = MatchingResult.objects.filter(batch_id=batch_id).values('status').annotate(
                     count=models.Count('id')
                 )
+                
+                # PERBAIKAN: Cek apakah ini self-matching atau cross-matching
+                sample_result = MatchingResult.objects.filter(batch_id=batch_id).first()
+                matching_type = 'cross_matching'
+                if sample_result:
+                    matching_type = 'self_matching' if sample_result.source_table == sample_result.reference_table else 'cross_matching'
+                
             else:
                 # Stats keseluruhan
                 stats = MatchingResult.objects.values('status').annotate(
                     count=models.Count('id')
                 )
+                matching_type = 'all'
             
             # Labeling stats
             labeling_stats = {
@@ -228,6 +251,7 @@ class GetMatchingStatsView(APIView):
             }
             
             return Response({
+                'matching_type': matching_type,
                 'matching_stats': list(stats),
                 'labeling_stats': labeling_stats
             })
