@@ -1,6 +1,8 @@
 from django.urls import path
 from .views import (
     JobStatusView,
+    MatchingJobListView,
+    PrepareCombinedDataView,
     upload_file,
     GetAvailableTablesView,
     GetRecommendedColumnsView,
@@ -15,6 +17,7 @@ from .views import (
 urlpatterns = [
     path('upload/', upload_file, name='upload_file'),
    # path('upload/', UploadDataView.as_view(), name='upload_data'),
+    path('prepare-combined/', PrepareCombinedDataView.as_view(), name='prepare_combined'),
     path('tables/', GetAvailableTablesView.as_view(), name='get_tables'),
     path('recommend-columns/', GetRecommendedColumnsView.as_view(), name='recommend_columns'),
     path('start-matching/', StartMatchingView.as_view(), name='start_matching'),
@@ -23,6 +26,7 @@ urlpatterns = [
     path('submit-labeling/', SubmitLabelingView.as_view(), name='submit_labeling'),
     path('retrain-model/', RetrainModelView.as_view(), name='retrain_model'),
     path('matching-stats/', GetMatchingStatsView.as_view(), name='matching_stats'),
+    path('matching-jobs/', MatchingJobListView.as_view(), name='matching_jobs'),
     path('job-status/<str:job_id>/', JobStatusView.as_view(), name='job_status')
 ]
 

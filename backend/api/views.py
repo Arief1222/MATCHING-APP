@@ -103,6 +103,40 @@ def run_matching_background(job_id, table_a, table_b, columns_a, columns_b):
         engine.update_job_status(job_id=job_id, status="Failed")
         logger.error(f"Matching job {job_id} failed: {str(e)}")
         raise e
+    
+class MatchingJobListView(APIView):
+    def get(self, request):
+        jobs = MatchingJob.objects.all().order_by('-start_time')
+        return Response([
+            {
+                "job_id": job.job_id,
+                "table_name": job.table_name,
+                "status": job.status,
+                "start_time": job.start_time,
+                "end_time": job.end_time,
+            }
+            for job in jobs
+        ])
+
+class PrepareCombinedDataView(APIView):
+    def post(self, request):
+        try:
+            table_name = request.data.get('table_name')
+            selected_columns = request.data.get('selected_columns')
+            
+            if not table_name or not selected_columns:
+                return Response({'error': 'table_name and selected_columns required'}, status=400)
+
+            engine = MatchingEngine()
+            df_combined = engine.prepare_combined_data(table_name, selected_columns)
+            
+            if df_combined is None:
+                return Response({'error': 'Data kosong atau gagal diproses'}, status=400)
+            
+            return Response({'data': df_combined.to_dict(orient='records')})
+        
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
 # API view untuk start matching
 class StartMatchingView(APIView):

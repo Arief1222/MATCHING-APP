@@ -1,171 +1,139 @@
-// components/MatchResultTable.jsx
-import { useState } from "react";
+import React, { useState, useEffect } from 'react';
+import { useAuth } from "@clerk/clerk-react";
 import axios from "axios";
-import 'react-toastify/dist/ReactToastify.css';
 import { toast } from "react-toastify";
 
+const MatchResultTable = () => {
+  const { getToken } = useAuth();
+  const [results, setResults] = useState([]); // Initialize as empty array
+  const [loading, setLoading] = useState(false);
 
-const MatchResultTable = ({
-  matches,
-  setMatches,
-  exportToExcel,
-  lastValidated,
-  setLastValidated,
-}) => {
-  const [savingIndex, setSavingIndex] = useState(null);
-  const itemsPerPage = 10;
-  const [currentPage, setCurrentPage] = useState(1);
-   
-
-  const totalPages = Math.ceil(matches.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedMatches = matches.slice(startIndex, startIndex + itemsPerPage);
-
-  const goToPage = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
+  // Helper function untuk mendapatkan headers dengan token
+  const getAuthHeaders = async () => {
+    try {
+      const token = await getToken();
+      return {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+      return {};
     }
   };
 
-  const handleUndo = async () => {
-    if (!lastValidated) return toast.error("Tidak ada data untuk di-undo.");
-
+  // Fetch results dari backend
+  const fetchResults = async () => {
+    setLoading(true);
     try {
-      const res = await axios.post("http://127.0.0.1:8000/undo_validation/", lastValidated);
-      console.log("✅ Validasi disimpan:", res.data.message);
-      toast.success("Undo berhasil");
-      setMatches((prev) => [lastValidated, ...prev]);
-      setLastValidated(null);
-    } catch (err) {
-      const msg = err.response?.data?.error || err.message || "Unknown error";
-      toast.error("Gagal undo: " + msg);
-      console.error("UNDO GAGAL:", err.response || err);
-    }
-  };
-
-
-
-  const handleValidation = async (index, label) => {
-    const globalIndex = startIndex + index;
-    const match = matches[globalIndex];
-    const payload = {
-      fuzzy_combined: match.fuzzy_combined,
-      faiss_score: match.faiss_score,
-      user_validasi: label,
-    };
-
-    console.log("📤 Kirim validasi:", payload);
-
-    try {
-      setSavingIndex(globalIndex);
-      const res = await axios.post("http://127.0.0.1:8000/validate/", payload);
-      console.log("✅ Respon dari server:", res.data);
-
-      toast.success("Validasi berhasil disimpan");
-
-      const updated = [...matches];
-      updated.splice(globalIndex, 1);
-      setMatches(updated);
-      setLastValidated(match);
-    } catch (err) {
-      const msg = err.response?.data?.error || err.message || "Unknown error";
-      toast.error("Gagal menyimpan validasi: " + msg);
-      console.error("VALIDASI GAGAL:", err.response || err);
+      const headers = await getAuthHeaders();
+      const response = await axios.get('http://127.0.0.1:8001/matching-results/', { headers });
+      // Pastikan data yang diterima adalah array
+      setResults(Array.isArray(response.data) ? response.data : response.data?.results || []);
+    } catch (error) {
+      console.error('Error fetching results:', error);
+      toast.error('Gagal mengambil hasil matching');
+      setResults([]); // Set empty array jika error
     } finally {
-      setSavingIndex(null);
+      setLoading(false);
     }
   };
 
-  if (!matches || matches.length === 0) return null;
+  useEffect(() => {
+    fetchResults();
+  }, []);
 
-  return (
-    <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <span>🧐</span> Data Ambigu untuk Validasi
-        </h3>
-        <div className="flex gap-2">
-          <button
-            onClick={exportToExcel}
-            className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white px-4 py-2 rounded-lg transition-all shadow-sm font-medium flex items-center gap-2 text-sm"
-          >
-            <span>💾</span> Export Excel
-          </button>
-          {lastValidated && (
-            <button
-              onClick={handleUndo}
-              className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm transition shadow-sm"
-            >
-              ↩️ Undo Validasi
-            </button>
-          )}
+  if (loading) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-4">
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Memuat hasil matching...</span>
         </div>
       </div>
+    );
+  }
 
+  // Safe check untuk length - pastikan results adalah array
+  if (!Array.isArray(results) || results.length === 0) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">
+          📊 Hasil Matching
+        </h3>
+        <div className="text-center py-8">
+          <p className="text-gray-500 mb-2">Belum ada hasil matching</p>
+          <p className="text-gray-400 text-sm">Mulai proses matching untuk melihat hasil</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-4">
+      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+        📊 Hasil Matching ({results.length} hasil)
+      </h3>
+      
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-100/80 backdrop-blur-sm">
-              <th className="text-left px-4 py-3 text-slate-700 text-sm">#</th>
-              <th className="text-left px-4 py-3 text-slate-700 text-sm">Combined 1</th>
-              <th className="text-left px-4 py-3 text-slate-700 text-sm">Combined 2</th>
-              <th className="text-left px-4 py-3 text-slate-700 text-sm">FAISS</th>
-              <th className="text-left px-4 py-3 text-slate-700 text-sm">Fuzzy</th>
-              <th className="text-left px-4 py-3 text-slate-700 text-sm">Confidence</th>
-              <th className="text-left px-4 py-3 text-slate-700 text-sm">Validasi</th>
+            <tr className="bg-gray-50">
+              <th className="px-4 py-3 text-left font-medium text-gray-700 border">No</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-700 border">Data A</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-700 border">Data B</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-700 border">Similarity</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-700 border">Status</th>
             </tr>
           </thead>
           <tbody>
-            {paginatedMatches.map((row, i) => (
-              <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                <td className="px-4 py-3 border-b border-slate-200 text-slate-700 text-sm">{startIndex + i + 1}</td>
-                <td className="px-4 py-3 border-b border-slate-200 text-slate-700 text-sm">{row.combined_1}</td>
-                <td className="px-4 py-3 border-b border-slate-200 text-slate-700 text-sm">{row.combined_2}</td>
-                <td className="px-4 py-3 border-b border-slate-200 text-slate-700 text-sm">{row.faiss_score}</td>
-                <td className="px-4 py-3 border-b border-slate-200 text-slate-700 text-sm">{row.fuzzy_combined}</td>
-                <td className="px-4 py-3 border-b border-slate-200 text-slate-700 text-sm">{(row.confidence * 100).toFixed(2)}%</td>
-                <td className="px-4 py-3 border-b border-slate-200 text-slate-700 text-sm flex gap-2">
-                  <button
-                    onClick={() => handleValidation(i, 1)}
-                    disabled={savingIndex === startIndex + i}
-                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded-lg text-sm transition disabled:opacity-50"
-                  >
-                    ✅ Match
-                  </button>
-                  <button
-                    onClick={() => handleValidation(i, 0)}
-                    disabled={savingIndex === startIndex + i}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-lg text-sm transition disabled:opacity-50"
-                  >
-                    ❌ Non-Match
-                  </button>
+            {results.map((result, index) => (
+              <tr key={index} className="hover:bg-gray-50">
+                <td className="px-4 py-3 border text-gray-700">{index + 1}</td>
+                <td className="px-4 py-3 border text-gray-700">
+                  {result.data_a || 'N/A'}
+                </td>
+                <td className="px-4 py-3 border text-gray-700">
+                  {result.data_b || 'N/A'}
+                </td>
+                <td className="px-4 py-3 border">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    (result.similarity || 0) > 0.8 
+                      ? 'bg-green-100 text-green-800' 
+                      : (result.similarity || 0) > 0.6 
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {((result.similarity || 0) * 100).toFixed(1)}%
+                  </span>
+                </td>
+                <td className="px-4 py-3 border">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    result.is_match 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {result.is_match ? 'Match' : 'No Match'}
+                  </span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
 
-        <div className="mt-4 flex justify-center gap-2">
-          <button
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-3 py-1 bg-slate-200 text-sm rounded hover:bg-slate-300 disabled:opacity-50"
-          >
-            ← Prev
-          </button>
-          <span className="px-3 py-1 text-sm text-slate-600">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1 bg-slate-200 text-sm rounded hover:bg-slate-300 disabled:opacity-50"
-          >
-            Next →
-          </button>
+      <div className="mt-4 flex justify-between items-center">
+        <button
+          onClick={fetchResults}
+          className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors font-medium"
+        >
+          🔄 Refresh
+        </button>
+        
+        <div className="text-sm text-gray-600">
+          Total: {results.length} hasil
         </div>
       </div>
-       <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };
