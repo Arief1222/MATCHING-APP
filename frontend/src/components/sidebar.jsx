@@ -1,6 +1,7 @@
+// frontend/src/components/sidebar.jsx
 import { FiUpload, FiDatabase, FiGitMerge, FiXCircle, FiClipboard, FiTag } from "react-icons/fi";
 
-const Sidebar = ({ isOpen, toggleSidebar, onMenuSelect }) => {
+const Sidebar = ({ isOpen, toggleSidebar, onMenuSelect, activeMenu }) => {
   const menus = [
     { key: "upload", label: "Upload", icon: <FiUpload /> },
     { key: "match", label: "Match", icon: <FiGitMerge /> },
@@ -18,7 +19,11 @@ const Sidebar = ({ isOpen, toggleSidebar, onMenuSelect }) => {
           <li key={menu.key}>
             <button
               onClick={() => onMenuSelect(menu.key)}
-              className="flex items-center space-x-2 w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition"
+              className={`flex items-center space-x-2 w-full text-left px-3 py-2 rounded-lg transition ${
+                activeMenu === menu.key 
+                  ? 'bg-blue-100 text-blue-600' 
+                  : 'hover:bg-gray-100'
+              }`}
             >
               {menu.icon}
               <span>{menu.label}</span>

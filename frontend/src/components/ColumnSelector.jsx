@@ -15,7 +15,7 @@ const ColumnSelector = ({
       <div>
         <label className="block font-medium text-slate-700 mb-2">
           📌 Pilih Kolom untuk Digabung:
-        </label>
+        </label>  
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {columns.map((col, idx) => (
             <label
