@@ -1,8 +1,29 @@
 // frontend/src/pages/MatchPage.jsx
-import React from "react";
+import React, { useEffect } from "react";
 import MatchResultTable from "../components/MatchResultTable";
 
 const MatchPage = ({ getAuthHeaders, selectedTable, setLoading }) => {
+  useEffect(() => {
+    console.log("📥 MatchPage Mounted");
+    if (selectedTable) {
+      console.log("✅ selectedTable tersedia:", selectedTable);
+    } else {
+      console.warn("⚠️ selectedTable belum tersedia.");
+    }
+
+    // Coba tes apakah getAuthHeaders mengembalikan hasil yang valid
+    const testAuthHeaders = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        console.log("🛂 Auth Headers berhasil diambil:", headers);
+      } catch (err) {
+        console.error("❌ Gagal mengambil auth headers:", err);
+      }
+    };
+
+    testAuthHeaders();
+  }, [selectedTable, getAuthHeaders]);
+
   return (
     <div className="space-y-6">
       {selectedTable && (

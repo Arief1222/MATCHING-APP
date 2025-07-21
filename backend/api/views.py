@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.http import FileResponse
 from django.core.files.storage import default_storage
 import os
+from django.db import connection
 from django.views.decorators.csrf import csrf_exempt
 #from .services.match_engine import run_faiss_matching
 from django.views.decorators.csrf import csrf_exempt
@@ -44,17 +45,30 @@ class JobStatusView(APIView):
         
 class GetAvailableTablesView(APIView):
     def get(self, request):
-        """Get daftar tabel yang tersedia"""
         try:
-            # Get from Django model
-            tables = DataTable.objects.filter(created_by=request.user).values(
-                'id', 'name', 'original_filename', 'row_count', 'column_names', 'created_at'
-            )
+            logger.info("=== GetAvailableTablesView Start ===")
+
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                """)
+                result = cursor.fetchall()
             
-            return Response({'tables': list(tables)})
+            # Convert result ke list nama tabel
+            tables_list = [row[0] for row in result]
             
+            return Response({
+                'tables': tables_list,
+                'total': len(tables_list)
+            })
+        
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            logger.error(f"Error in GetAvailableTablesView: {e}", exc_info=True)
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class GetRecommendedColumnsView(APIView):
     def post(self, request):
@@ -293,6 +307,8 @@ class GetMatchingStatsView(APIView):
             
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+        
+
 
 @api_view(['GET'])
 def progress_faiss(request):

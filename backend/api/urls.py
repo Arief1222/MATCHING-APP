@@ -12,7 +12,9 @@ from .views import (
     GetLabelingDataView,
     SubmitLabelingView,
     RetrainModelView,
-    GetMatchingStatsView
+    GetMatchingStatsView,
+    GetAvailableTablesView
+    
 )
 
 urlpatterns = [
@@ -29,7 +31,8 @@ urlpatterns = [
     path('matching-stats/', GetMatchingStatsView.as_view(), name='matching_stats'),
     path('matching-jobs/', MatchingJobListView.as_view(), name='matching_jobs'),
     path('api-token-auth/', obtain_auth_token),
-    path('job-status/<str:job_id>/', JobStatusView.as_view(), name='job_status')
+    path('job-status/<str:job_id>/', JobStatusView.as_view(), name='job_status'),
+    path('api/tables/', GetAvailableTablesView.as_view(), name='get_available_tables')
 ]
 
 # from django.urls import path

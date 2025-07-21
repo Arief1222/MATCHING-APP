@@ -24,20 +24,50 @@ const MatchResultTable = () => {
 
   // Fetch results dari backend
   const fetchResults = async () => {
-    setLoading(true);
-    try {
-      const headers = await getAuthHeaders();
-      const response = await axios.get('http://127.0.0.1:8001/matching-results/', { headers });
-      // Pastikan data yang diterima adalah array
-      setResults(Array.isArray(response.data) ? response.data : response.data?.results || []);
-    } catch (error) {
-      console.error('Error fetching results:', error);
-      toast.error('Gagal mengambil hasil matching');
-      setResults([]); // Set empty array jika error
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const headers = await getAuthHeaders();
+    console.log("Auth Headers:", headers); // DEBUG: Lihat headers yang digunakan
+
+    const response = await axios.get('http://127.0.0.1:8001/matching-results/', { headers });
+
+    console.log("Response Status:", response.status); // DEBUG: Cek status HTTP
+    console.log("Full Response:", response); // DEBUG: Cek seluruh response
+    console.log("Response Data:", response.data); // DEBUG: Cek hanya bagian data
+
+    // Pastikan data yang diterima adalah array
+    const data = Array.isArray(response.data)
+      ? response.data
+      : response.data?.results || [];
+
+    if (!Array.isArray(data)) {
+      console.warn("Expected array but got:", typeof data, data); // DEBUG: Bentuk data tidak sesuai
     }
-  };
+
+    setResults(data);
+  } catch (error) {
+    console.error('Error fetching results:', error); // DEBUG: Error object secara keseluruhan
+
+    if (error.response) {
+      // Server responded with a status code out of 2xx
+      console.error("Error Response Status:", error.response.status);
+      console.error("Error Response Data:", error.response.data);
+      console.error("Error Response Headers:", error.response.headers);
+    } else if (error.request) {
+      // Request dibuat tapi tidak ada response
+      console.error("No response received. Request was:", error.request);
+    } else {
+      // Terjadi kesalahan saat menyusun request
+      console.error("Error setting up the request:", error.message);
+    }
+
+    toast.error('Gagal mengambil hasil matching');
+    setResults([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchResults();
