@@ -12,7 +12,7 @@ import "react-toastify/dist/ReactToastify.css";
 // Components
 import Header from "./components/Header";
 import Sidebar from "./components/sidebar";
-import Loader from "./components/Loader";
+// import Loader from "./components/Loader";
 
 // Pages
 import UploadPage from "./pages/UploadPage";
@@ -115,7 +115,7 @@ function App() {
             {renderActivePage()}
           </SignedIn>
 
-          {loading && <Loader />}
+          {/* {loading && <Loader />} */}
           <ToastContainer position="top-right" autoClose={3000} />
         </div>
       </div>

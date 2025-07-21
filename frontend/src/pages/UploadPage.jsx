@@ -23,6 +23,9 @@ const UploadPage = ({
   const [recommendedCols, setRecommendedCols] = useState([]);
   const [showRecommendedCols, setShowRecommendedCols] = useState(false);
   const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const [isProcessingColumns, setIsProcessingColumns] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
 
   useEffect(() => {
     if (selectedTable) {
@@ -60,54 +63,53 @@ const UploadPage = ({
     }
   };
 
-  const handleUpload = async () => {
-    if (!file) return toast.warn("Pilih file terlebih dahulu");
-    if (!tableName) return toast.warn("Isi nama tabel terlebih dahulu");
-    setLoading(true);
+const handleUpload = async () => {
+  if (!file) return toast.warn("Pilih file terlebih dahulu");
+  if (!tableName) return toast.warn("Isi nama tabel terlebih dahulu");
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("table_name", tableName);
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("table_name", tableName);
 
-    try {
-      const headers = await getAuthHeadersMultipart();
-      const res = await axios.post(
-        "http://127.0.0.1:8001/upload/", 
-        formData, 
-        { headers }
-      );
-      
-      toast.success("File berhasil diupload!");
-      setColumns(res.data.columns);
-      setSelectedTable({ 
-        name: tableName,
-        original_filename: file.name,
-        row_count: res.data.row_count,
-        column_names: res.data.columns
-      });
+  setIsUploading(true); // mulai loading tombol
+  try {
+    const headers = await getAuthHeadersMultipart();
+    const res = await axios.post(
+      "http://127.0.0.1:8001/upload/",
+      formData,
+      { headers }
+    );
 
-      // Ambil rekomendasi setelah upload
-      const authHeaders = await getAuthHeaders();
-      const recRes = await axios.post(
-        "http://127.0.0.1:8001/recommend-columns/",
-        { table_name: tableName },
-        { headers: authHeaders }
-      );
+    toast.success("File berhasil diupload!");
+    setColumns(res.data.columns);
+    setSelectedTable({
+      name: tableName,
+      original_filename: file.name,
+      row_count: res.data.row_count,
+      column_names: res.data.columns
+    });
 
-      const rekomendasi = recRes.data?.table_a_recommendations || [];
-      if (rekomendasi.length > 0) {
-        setRecommendedCols(rekomendasi.map(item => item.column));
-        setShowRecommendedCols(true);
-      } else {
-        setShowColumnSelector(true);
-      }
-    } catch (err) {
-      toast.error("Gagal upload file");
-      console.error(err);
-    } finally {
-      setLoading(false);
+    const authHeaders = await getAuthHeaders();
+    const recRes = await axios.post(
+      "http://127.0.0.1:8001/recommend-columns/",
+      { table_name: tableName },
+      { headers: authHeaders }
+    );
+
+    const rekomendasi = recRes.data?.table_a_recommendations || [];
+    if (rekomendasi.length > 0) {
+      setRecommendedCols(rekomendasi.map(item => item.column));
+      setShowRecommendedCols(true);
+    } else {
+      setShowColumnSelector(true);
     }
-  };
+  } catch (err) {
+    toast.error("Gagal upload file");
+    console.error(err);
+  } finally {
+    setIsUploading(false); // selesai loading tombol
+  }
+};
 
   const handleCheckboxChange = (e) => {
     const value = e.target.value;
@@ -227,13 +229,14 @@ const UploadPage = ({
         </div>
       )}
 
-      <UploadFile
-        file={file}
-        setFile={setFile}
-        tableName={tableName}
-        setTableName={setTableName}
-        handleUpload={handleUpload}
-      />
+<UploadFile
+  file={file}
+  setFile={setFile}
+  tableName={tableName}
+  setTableName={setTableName}
+  handleUpload={(setIsUploading) => handleUpload(file, tableName, setIsUploading)}
+  setIsUploading={setIsUploading}
+/>
 
       {/* Rekomendasi Kolom */}
       {showRecommendedCols && (
