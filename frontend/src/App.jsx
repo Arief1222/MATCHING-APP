@@ -85,7 +85,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex">
+    <div className="min-h-screen bg-yellow-100 flex">
       <SignedIn>
         <Sidebar
           isOpen={sidebarOpen}

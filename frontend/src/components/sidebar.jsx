@@ -12,18 +12,19 @@ const Sidebar = ({ isOpen, toggleSidebar, onMenuSelect, activeMenu }) => {
   ];
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-white shadow-lg z-50 ${isOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform w-64`}>
-      <div className="p-4 border-b font-semibold">Menu</div>
-      <ul className="space-y-2 p-4">
-        {menus.map(menu => (
-          <li key={menu.key}>
-            <button
-              onClick={() => onMenuSelect(menu.key)}
-              className={`flex items-center space-x-2 w-full text-left px-3 py-2 rounded-lg transition ${
-                activeMenu === menu.key 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'hover:bg-gray-100'
-              }`}
+    <div className={`fixed left-0 top-0 h-full bg-[#1e293b] text-white shadow-lg z-50 ${isOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform w-64`}>
+  <div className="p-4 border-b border-gray-700 font-semibold">Menu</div>
+  <ul className="space-y-2 p-4">
+    {menus.map(menu => (
+      <li key={menu.key}>
+        <button
+          onClick={() => onMenuSelect(menu.key)}
+          className={`flex items-center space-x-2 w-full text-left px-3 py-2 rounded-lg transition ${
+            activeMenu === menu.key 
+              ? 'bg-blue-500 text-white' 
+              : 'hover:bg-gray-700'
+          }`}
+
             >
               {menu.icon}
               <span>{menu.label}</span>
