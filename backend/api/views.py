@@ -638,7 +638,349 @@ class GetMatchingStatsView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=500)
         
+class GetCategorizedMatchResultsView(APIView):
+    """
+    View untuk mendapatkan hasil matching yang dikategorikan
+    berdasarkan table source, reference, dan algoritma
+    """
+    
+    def get(self, request):
+        try:
+            # Parameter filter
+            status_filter = request.query_params.get('status', 'MATCH')  # MATCH atau UNMATCH
+            batch_id = request.query_params.get('batch_id')
+            source_table = request.query_params.get('source_table')
+            reference_table = request.query_params.get('reference_table')
+            algorithm = request.query_params.get('algorithm')
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 50))
+            
+            # Base query
+            query = MatchingResult.objects.filter(status=status_filter.upper())
+            
+            # Apply filters
+            if batch_id:
+                query = query.filter(batch_id=batch_id)
+            if source_table:
+                query = query.filter(source_table=source_table)
+            if reference_table:
+                query = query.filter(reference_table=reference_table)
+            if algorithm:
+                query = query.filter(matching_algorithm=algorithm)
+            
+            # Get unique categories for dropdown filters
+            categories = self.get_categories(status_filter.upper())
+            
+            # Pagination
+            total_count = query.count()
+            offset = (page - 1) * page_size
+            results = query.order_by('-created_at')[offset:offset + page_size]
+            
+            # Serialize results
+            serialized_results = []
+            for result in results:
+                serialized_results.append({
+                    'id': result.id,
+                    'batch_id': result.batch_id,
+                    'source_table': result.source_table,
+                    'reference_table': result.reference_table,
+                    'matching_algorithm': result.matching_algorithm,
+                    'matched_data': result.matched_data,
+                    'confidence_score': result.confidence_score,
+                    'created_at': result.created_at.isoformat(),
+                    'status': result.status,
+                    'matching_type': 'Self Match' if result.source_table == result.reference_table else 'Cross Match'
+                })
+            
+            return Response({
+                'results': serialized_results,
+                'pagination': {
+                    'page': page,
+                    'page_size': page_size,
+                    'total_count': total_count,
+                    'total_pages': (total_count + page_size - 1) // page_size,
+                    'has_next': page * page_size < total_count,
+                    'has_prev': page > 1
+                },
+                'categories': categories,
+                'filters_applied': {
+                    'status': status_filter.upper(),
+                    'batch_id': batch_id,
+                    'source_table': source_table,
+                    'reference_table': reference_table,
+                    'algorithm': algorithm
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in GetCategorizedMatchResultsView: {e}", exc_info=True)
+            return Response({'error': str(e)}, status=500)
+    
+    def get_categories(self, status_filter):
+        """
+        Mendapatkan kategori unik untuk filter dropdown
+        """
+        try:
+            # Get unique combinations
+            unique_combinations = MatchingResult.objects.filter(
+                status=status_filter
+            ).values(
+                'batch_id', 'source_table', 'reference_table', 'matching_algorithm'
+            ).annotate(
+                count=models.Count('id'),
+                avg_confidence=models.Avg('confidence_score'),
+                latest_date=models.Max('created_at')
+            ).order_by('-latest_date')
+            
+            # Group by table combinations
+            table_combinations = {}
+            algorithms = set()
+            batch_ids = set()
+            
+            for combo in unique_combinations:
+                # Create table pair key
+                if combo['source_table'] == combo['reference_table']:
+                    table_key = f"Self: {combo['source_table']}"
+                else:
+                    table_key = f"{combo['source_table']} ↔ {combo['reference_table']}"
+                
+                if table_key not in table_combinations:
+                    table_combinations[table_key] = {
+                        'source_table': combo['source_table'],
+                        'reference_table': combo['reference_table'],
+                        'matching_type': 'Self Match' if combo['source_table'] == combo['reference_table'] else 'Cross Match',
+                        'algorithms': [],
+                        'batch_ids': set(),
+                        'total_records': 0,
+                        'avg_confidence': 0,
+                        'latest_date': combo['latest_date']
+                    }
+                
+                table_combinations[table_key]['algorithms'].append({
+                    'algorithm': combo['matching_algorithm'],
+                    'count': combo['count'],
+                    'avg_confidence': round(combo['avg_confidence'], 2) if combo['avg_confidence'] else 0
+                })
+                
+                table_combinations[table_key]['batch_ids'].add(combo['batch_id'])
+                table_combinations[table_key]['total_records'] += combo['count']
+                
+                algorithms.add(combo['matching_algorithm'])
+                batch_ids.add(combo['batch_id'])
+            
+            # Convert sets to lists and sort
+            for key in table_combinations:
+                table_combinations[key]['batch_ids'] = sorted(list(table_combinations[key]['batch_ids']))
+                table_combinations[key]['avg_confidence'] = round(
+                    sum([alg['avg_confidence'] * alg['count'] for alg in table_combinations[key]['algorithms']]) / 
+                    table_combinations[key]['total_records'], 2
+                ) if table_combinations[key]['total_records'] > 0 else 0
+            
+            return {
+                'table_combinations': [
+                    {
+                        'display_name': key,
+                        **value
+                    } for key, value in table_combinations.items()
+                ],
+                'unique_algorithms': sorted(list(algorithms)),
+                'unique_batch_ids': sorted(list(batch_ids), reverse=True),  # Latest first
+                'unique_source_tables': sorted(list(set([combo['source_table'] for combo in unique_combinations]))),
+                'unique_reference_tables': sorted(list(set([combo['reference_table'] for combo in unique_combinations])))
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting categories: {e}", exc_info=True)
+            return {}
 
+
+class GetMatchingSummaryView(APIView):
+    """
+    View untuk mendapatkan summary hasil matching
+    """
+    
+    def get(self, request):
+        try:
+            # Get summary statistics
+            total_matches = MatchingResult.objects.filter(status='MATCH').count()
+            total_unmatches = MatchingResult.objects.filter(status='UNMATCH').count()
+            total_enriched = MatchingResult.objects.filter(status='ENRICHED').count()
+            
+            # Get algorithm performance
+            algorithm_stats = MatchingResult.objects.values('matching_algorithm').annotate(
+                total_count=models.Count('id'),
+                match_count=models.Count('id', filter=models.Q(status='MATCH')),
+                unmatch_count=models.Count('id', filter=models.Q(status='UNMATCH')),
+                avg_confidence=models.Avg('confidence_score')
+            )
+            
+            # Get table pair statistics
+            table_pair_stats = MatchingResult.objects.values(
+                'source_table', 'reference_table'
+            ).annotate(
+                total_count=models.Count('id'),
+                match_count=models.Count('id', filter=models.Q(status='MATCH')),
+                unmatch_count=models.Count('id', filter=models.Q(status='UNMATCH')),
+                avg_confidence=models.Avg('confidence_score'),
+                latest_run=models.Max('created_at')
+            ).order_by('-latest_run')
+            
+            # Format table pair stats
+            formatted_table_stats = []
+            for stat in table_pair_stats:
+                matching_type = 'Self Match' if stat['source_table'] == stat['reference_table'] else 'Cross Match'
+                display_name = stat['source_table'] if matching_type == 'Self Match' else f"{stat['source_table']} ↔ {stat['reference_table']}"
+                
+                formatted_table_stats.append({
+                    'display_name': display_name,
+                    'source_table': stat['source_table'],
+                    'reference_table': stat['reference_table'],
+                    'matching_type': matching_type,
+                    'total_count': stat['total_count'],
+                    'match_count': stat['match_count'],
+                    'unmatch_count': stat['unmatch_count'],
+                    'match_rate': round((stat['match_count'] / stat['total_count']) * 100, 2) if stat['total_count'] > 0 else 0,
+                    'avg_confidence': round(stat['avg_confidence'], 2) if stat['avg_confidence'] else 0,
+                    'latest_run': stat['latest_run'].isoformat() if stat['latest_run'] else None
+                })
+            
+            # Get recent activity
+            recent_activities = MatchingResult.objects.order_by('-created_at')[:10].values(
+                'batch_id', 'source_table', 'reference_table', 'matching_algorithm', 
+                'status', 'confidence_score', 'created_at'
+            )
+            
+            formatted_recent = []
+            for activity in recent_activities:
+                matching_type = 'Self Match' if activity['source_table'] == activity['reference_table'] else 'Cross Match'
+                display_name = activity['source_table'] if matching_type == 'Self Match' else f"{activity['source_table']} ↔ {activity['reference_table']}"
+                
+                formatted_recent.append({
+                    'display_name': display_name,
+                    'matching_type': matching_type,
+                    'algorithm': activity['matching_algorithm'],
+                    'status': activity['status'],
+                    'confidence_score': activity['confidence_score'],
+                    'created_at': activity['created_at'].isoformat(),
+                    'batch_id': activity['batch_id']
+                })
+            
+            return Response({
+                'overview': {
+                    'total_matches': total_matches,
+                    'total_unmatches': total_unmatches,
+                    'total_enriched': total_enriched,
+                    'total_records': total_matches + total_unmatches + total_enriched
+                },
+                'algorithm_performance': list(algorithm_stats),
+                'table_pair_statistics': formatted_table_stats,
+                'recent_activities': formatted_recent
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in GetMatchingSummaryView: {e}", exc_info=True)
+            return Response({'error': str(e)}, status=500)
+
+
+class ExportCategorizedResultsView(APIView):
+    """
+    View untuk export hasil matching berdasarkan kategori
+    """
+    
+    def post(self, request):
+        try:
+            # Parameter untuk export
+            status_filter = request.data.get('status', 'MATCH')
+            batch_id = request.data.get('batch_id')
+            source_table = request.data.get('source_table')
+            reference_table = request.data.get('reference_table')
+            algorithm = request.data.get('algorithm')
+            format_type = request.data.get('format', 'excel')  # excel atau csv
+            
+            # Build query
+            query = MatchingResult.objects.filter(status=status_filter.upper())
+            
+            if batch_id:
+                query = query.filter(batch_id=batch_id)
+            if source_table:
+                query = query.filter(source_table=source_table)
+            if reference_table:
+                query = query.filter(reference_table=reference_table)
+            if algorithm:
+                query = query.filter(matching_algorithm=algorithm)
+            
+            # Get data
+            results = query.order_by('-created_at').values()
+            
+            if not results:
+                return Response({'error': 'No data found for export'}, status=400)
+            
+            # Create DataFrame
+            import pandas as pd
+            df = pd.DataFrame(list(results))
+            
+            # Add additional columns
+            df['matching_type'] = df.apply(
+                lambda row: 'Self Match' if row['source_table'] == row['reference_table'] else 'Cross Match', 
+                axis=1
+            )
+            
+            # Generate filename
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename_parts = [status_filter.lower(), 'results', timestamp]
+            
+            if source_table and reference_table:
+                if source_table == reference_table:
+                    filename_parts.insert(-1, f'self_{source_table}')
+                else:
+                    filename_parts.insert(-1, f'{source_table}_to_{reference_table}')
+            
+            filename = '_'.join(filename_parts)
+            
+            # Export based on format
+            if format_type == 'excel':
+                export_path = f'exports/{filename}.xlsx'
+                os.makedirs('exports', exist_ok=True)
+                
+                with pd.ExcelWriter(export_path, engine='openpyxl') as writer:
+                    # Main data sheet
+                    df.to_excel(writer, sheet_name='Results', index=False)
+                    
+                    # Summary sheet
+                    summary_data = {
+                        'Metric': ['Total Records', 'Average Confidence', 'Matching Type', 'Algorithm Used'],
+                        'Value': [
+                            len(df),
+                            df['confidence_score'].mean() if 'confidence_score' in df.columns else 0,
+                            df['matching_type'].iloc[0] if len(df) > 0 else 'N/A',
+                            ', '.join(df['matching_algorithm'].unique()) if 'matching_algorithm' in df.columns else 'N/A'
+                        ]
+                    }
+                    pd.DataFrame(summary_data).to_excel(writer, sheet_name='Summary', index=False)
+                
+                # Return file
+                return FileResponse(
+                    open(export_path, 'rb'),
+                    as_attachment=True,
+                    filename=f'{filename}.xlsx',
+                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+                
+            else:  # CSV
+                export_path = f'exports/{filename}.csv'
+                os.makedirs('exports', exist_ok=True)
+                df.to_csv(export_path, index=False)
+                
+                return FileResponse(
+                    open(export_path, 'rb'),
+                    as_attachment=True,
+                    filename=f'{filename}.csv',
+                    content_type='text/csv'
+                )
+                
+        except Exception as e:
+            logger.error(f"Error in ExportCategorizedResultsView: {e}", exc_info=True)
+            return Response({'error': str(e)}, status=500)
 
 @api_view(['GET'])
 def progress_faiss(request):

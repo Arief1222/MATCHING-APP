@@ -20,6 +20,7 @@ import MatchingPage from "./pages/MatchingPage";
 import UnmatchPage from "./pages/UnmatchPage";
 import AssignmentPage from "./pages/AssignmentPage";
 import LabelingPage from "./pages/LabelingPage";
+import MatchResultsPage from "./pages/UnmatchPage";
 // import TablesPage from "./pages/TablesPage";
 
 function App() {
@@ -76,7 +77,7 @@ function App() {
     switch (activeMenu) {
       case "upload": return <UploadPage {...commonProps} />;
       case "match": return <MatchingPage {...commonProps} />;
-      case "unmatch": return <UnmatchPage {...commonProps} />;
+      case "unmatch": return <MatchResultsPage {...commonProps} />;
       case "assignment": return <AssignmentPage {...commonProps} />;
       case "labeling": return <LabelingPage {...commonProps} />;
       // case "tables": return <TablesPage {...commonProps} />;
@@ -85,7 +86,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-yellow-100 flex">
+    <div className="min-h-screen bg-white flex">
       <SignedIn>
         <Sidebar
           isOpen={sidebarOpen}

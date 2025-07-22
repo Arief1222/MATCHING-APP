@@ -2,6 +2,9 @@ from django.urls import path
 from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
     BulkTableOperationsView,
+    ExportCategorizedResultsView,
+    GetCategorizedMatchResultsView,
+    GetMatchingSummaryView,
     JobStatusView,
     MatchingJobListView,
     PrepareCombinedDataView,
@@ -37,7 +40,12 @@ urlpatterns = [
     path('api/tables/', GetAvailableTablesView.as_view(), name='get_available_tables'),
     path('tables/<str:table_name>/', TableManagementView.as_view(), name='table_management'),
     path('tables/bulk/delete/', BulkTableOperationsView.as_view(), name='bulk_table_operations'),
-    path('table-operations/', handle_table_operations, name='handle_table_operations')]
+    path('table-operations/', handle_table_operations, name='handle_table_operations'),
+    path('categorized-results/', GetCategorizedMatchResultsView.as_view(), name='categorized_match_results'),
+    path('matching-summary/', GetMatchingSummaryView.as_view(), name='matching_summary'),
+    path('export-categorized/', ExportCategorizedResultsView.as_view(), name='export_categorized')
+]
+    
 
 # from django.urls import path
 # from . import views
