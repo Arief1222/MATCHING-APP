@@ -1,77 +1,88 @@
-
+// frontend/src/components/ColumnSelector.jsx
+import React from "react";
 
 const ColumnSelector = ({
-  columns,
-  selectedColumns,
-  handleCheckboxChange,
+  matchingType,
+  columnsA = [],
+  columnsB = [],
+  selectedColumnsA,
+  selectedColumnsB,
+  handleCheckboxChangeA,
+  handleCheckboxChangeB,
   handleSubmitColumns,
   handleMatch,
-  fetchRecommendations,
-  combinedPreview,
-}) => (
-  <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-sm p-6 mb-6">
-    <h2 className="text-lg font-semibold text-slate-800 mb-4">⚙️ Konfigurasi Kolom</h2>
-    <div className="space-y-4">
-      <div>
-        <label className="block font-medium text-slate-700 mb-2">
-          📌 Pilih Kolom untuk Digabung:
-        </label>  
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {columns.map((col, idx) => (
-            <label
-              key={idx}
-              className="flex items-center gap-2 bg-white/50 p-2 rounded-lg shadow-sm border border-slate-300"
-            >
-              <input
-                type="checkbox"
-                value={col}
-                checked={selectedColumns.includes(col)}
-                onChange={handleCheckboxChange}
-                className="accent-slate-600"
-              />
-              <span className="text-slate-700 text-sm">{col}</span>
-            </label>
-          ))}
+  combinedPreview
+}) => {
+  return (
+    <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-sm p-6">
+      <h2 className="text-lg font-semibold text-slate-800 mb-4">📋 Pilih Kolom untuk Matching</h2>
+      
+      <div className={`grid ${matchingType === "cross" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"} gap-6`}>
+        {/* Kolom Tabel Utama */}
+        <div>
+          <h3 className="font-medium text-gray-700 mb-3">
+            Kolom Tabel Utama {matchingType === "cross" ? "(A)" : ""}:
+          </h3>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {columnsA.map((column, index) => (
+              <label key={index} className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  value={column}
+                  checked={selectedColumnsA.includes(column)}
+                  onChange={handleCheckboxChangeA}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">{column}</span>
+              </label>
+            ))}
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            Terpilih: {selectedColumnsA.length} kolom
+          </div>
         </div>
+
+        {/* Kolom Tabel Kedua (hanya untuk cross matching) */}
+        {matchingType === "cross" && (
+          <div>
+            <h3 className="font-medium text-gray-700 mb-3">Kolom Tabel Kedua (B):</h3>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {columnsB.map((column, index) => (
+                <label key={index} className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    value={column}
+                    checked={selectedColumnsB.includes(column)}
+                    onChange={handleCheckboxChangeB}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-gray-700">{column}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              Terpilih: {selectedColumnsB.length} kolom
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {/* <button
+      <div className="flex gap-3 mt-6">
+        <button
           onClick={handleSubmitColumns}
-          className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-sm font-medium flex items-center justify-center gap-1 text-sm"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
         >
-          <span>🔧</span> Proses Kolom
-        </button> */}
-
+          🔧 Proses Kolom
+        </button>
         <button
           onClick={handleMatch}
-          className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-sm font-medium flex items-center justify-center gap-1 text-sm"
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
         >
-          <span>🔍</span> Matching
+          🚀 Mulai Matching
         </button>
-
-        {/* <button
-          onClick={() => window.open("http://127.0.0.1:8000/download_results/", "_blank")}
-          className="bg-gradient-to-r from-slate-500 to-slate-600 text-white px-4 py-2 rounded-lg hover:from-slate-600 hover:to-slate-700 transition-all shadow-sm font-medium flex items-center justify-center gap-1 text-sm"
-        >
-          <span>⬇️</span> Download
-        </button> */}
       </div>
-
-      {Array.isArray(combinedPreview) && combinedPreview.length > 0 && (
-        <div className="bg-slate-100 rounded-xl p-4 mt-4 shadow-sm border">
-          <h3 className="font-semibold text-slate-700 mb-2">
-            🔎 Preview Kolom Gabungan:
-          </h3>
-          <ul className="text-sm text-slate-700 list-disc list-inside space-y-1">
-            {combinedPreview.map((item, idx) => (
-              <li key={idx}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
-  </div>
-);
+  );
+};
 
 export default ColumnSelector;

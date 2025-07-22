@@ -16,11 +16,11 @@ import Sidebar from "./components/sidebar";
 
 // Pages
 import UploadPage from "./pages/UploadPage";
-import MatchPage from "./pages/MatchPage";
+import MatchingPage from "./pages/MatchingPage";
 import UnmatchPage from "./pages/UnmatchPage";
 import AssignmentPage from "./pages/AssignmentPage";
 import LabelingPage from "./pages/LabelingPage";
-import TablesPage from "./pages/TablesPage";
+// import TablesPage from "./pages/TablesPage";
 
 function App() {
   const { getToken } = useAuth();
@@ -75,12 +75,12 @@ function App() {
 
     switch (activeMenu) {
       case "upload": return <UploadPage {...commonProps} />;
-      case "match": return <MatchPage {...commonProps} />;
+      case "match": return <MatchingPage {...commonProps} />;
       case "unmatch": return <UnmatchPage {...commonProps} />;
       case "assignment": return <AssignmentPage {...commonProps} />;
       case "labeling": return <LabelingPage {...commonProps} />;
-      case "tables": return <TablesPage {...commonProps} />;
-      default: return <UploadPage {...commonProps} />;
+      // case "tables": return <TablesPage {...commonProps} />;
+      // default: return <UploadPage {...commonProps} />;
     }
   };
 

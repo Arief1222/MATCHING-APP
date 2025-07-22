@@ -1,9 +1,11 @@
 from django.urls import path
 from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
+    BulkTableOperationsView,
     JobStatusView,
     MatchingJobListView,
     PrepareCombinedDataView,
+    TableManagementView,
     upload_file,
     GetAvailableTablesView,
     GetRecommendedColumnsView,
@@ -13,8 +15,8 @@ from .views import (
     SubmitLabelingView,
     RetrainModelView,
     GetMatchingStatsView,
-    GetAvailableTablesView
-    
+    GetAvailableTablesView,
+    handle_table_operations
 )
 
 urlpatterns = [
@@ -32,8 +34,10 @@ urlpatterns = [
     path('matching-jobs/', MatchingJobListView.as_view(), name='matching_jobs'),
     path('api-token-auth/', obtain_auth_token),
     path('job-status/<str:job_id>/', JobStatusView.as_view(), name='job_status'),
-    path('api/tables/', GetAvailableTablesView.as_view(), name='get_available_tables')
-]
+    path('api/tables/', GetAvailableTablesView.as_view(), name='get_available_tables'),
+    path('tables/<str:table_name>/', TableManagementView.as_view(), name='table_management'),
+    path('tables/bulk/delete/', BulkTableOperationsView.as_view(), name='bulk_table_operations'),
+    path('table-operations/', handle_table_operations, name='handle_table_operations')]
 
 # from django.urls import path
 # from . import views

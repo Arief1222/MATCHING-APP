@@ -4,11 +4,11 @@ import { FiUpload, FiDatabase, FiGitMerge, FiXCircle, FiClipboard, FiTag } from 
 const Sidebar = ({ isOpen, toggleSidebar, onMenuSelect, activeMenu }) => {
   const menus = [
     { key: "upload", label: "Upload", icon: <FiUpload /> },
-    { key: "match", label: "Match", icon: <FiGitMerge /> },
+    { key: "match", label: "Matching", icon: <FiGitMerge /> },
     { key: "unmatch", label: "Unmatch", icon: <FiXCircle /> },
     { key: "assignment", label: "Assignment", icon: <FiClipboard /> },
     { key: "labeling", label: "Labeling", icon: <FiTag /> },
-    { key: "tables", label: "Data Tabel", icon: <FiDatabase /> },
+    // { key: "tables", label: "Data Tabel", icon: <FiDatabase /> },
   ];
 
   return (
