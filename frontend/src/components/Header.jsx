@@ -1,14 +1,15 @@
 import React from "react";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/clerk-react";
 import { FiMenu } from "react-icons/fi";
 
 function Header({ onToggleSidebar }) {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.reload(); // Refresh agar diarahkan ke LoginPage
+  };
+
   return (
     <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-sm p-6 mb-6 flex justify-between items-center">
       <div className="flex items-center gap-4">
@@ -28,14 +29,19 @@ function Header({ onToggleSidebar }) {
         </div>
       </div>
 
-      <div className="flex gap-2 items-center">
-        <SignedOut>
-          <SignInButton />
-          <SignUpButton />
-        </SignedOut>
-        <SignedIn>
-          <UserButton />
-        </SignedIn>
+      <div className="flex items-center gap-4">
+        <div className="text-right">
+          <p className="text-sm font-semibold text-slate-800">
+            {user?.username || "Pengguna"}
+          </p>
+          <p className="text-xs text-slate-500">{user?.email || "-"}</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="px-3 py-1 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Logout
+        </button>
       </div>
     </div>
   );

@@ -35,25 +35,33 @@ const TablesPage = () => {
 
   // Function untuk mendapatkan detail tabel
   const fetchTableDetail = async (tableName) => {
-    try {
-      setLoadingDetail(true);
-      setError(""); // Clear previous errors
-      const response = await fetch(`http://127.0.0.1:8001/tables/${tableName}/`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    setLoadingDetail(true);
+    setError("");
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(`http://127.0.0.1:8001/tables/${tableName}/`, {
+      headers: {
+        Authorization: `Token ${token}`,
+        "Content-Type": "application/json"
       }
-      
-      const data = await response.json();
-      setSelectedTableDetail(data);
-      setShowDetailModal(true);
-    } catch (err) {
-      console.error("Gagal mendapatkan detail tabel:", err);
-      setError(`Gagal mendapatkan detail tabel: ${err.message}`);
-    } finally {
-      setLoadingDetail(false);
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  };
+
+    const data = await response.json();
+    setSelectedTableDetail(data);
+    setShowDetailModal(true);
+  } catch (err) {
+    console.error("Gagal mendapatkan detail tabel:", err);
+    setError(`Gagal mendapatkan detail tabel: ${err.message}`);
+  } finally {
+    setLoadingDetail(false);
+  }
+};
+
 
   useEffect(() => {
     fetchTables();
@@ -64,40 +72,51 @@ const TablesPage = () => {
   }, [tables, searchTerm, sortBy, sortOrder]);
 
   const fetchTables = async () => {
-    try {
-      setRefreshing(true);
-      setError("");
-      const response = await fetch("http://127.0.0.1:8001/tables/");
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Data tabel:", data);
-      
-      // Data sudah lengkap dari backend, tinggal format sesuai kebutuhan frontend
-      const tablesWithDetails = (data.tables || []).map(table => ({
-        name: typeof table === 'string' ? table : table.name,
-        records: typeof table === 'object' ? (table.records || table.actual_rows || 0) : 0,
-        size: typeof table === 'object' ? table.size : '0 bytes',
-        lastModified: typeof table === 'object' && table.last_modified 
-          ? new Date(table.last_modified) 
-          : new Date(),
-        type: typeof table === 'object' ? table.type || 'BASE TABLE' : 'BASE TABLE',
-        status: typeof table === 'object' ? table.status || 'active' : 'active',
-        columns: typeof table === 'object' ? (table.columns || 0) : 0
-      }));
-      
-      setTables(tablesWithDetails);
-    } catch (err) {
-      console.error("Gagal mengambil tabel:", err);
-      setError(`Gagal mengambil data tabel: ${err.message}`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  try {
+    setRefreshing(true);
+    setError("");
+    const token = localStorage.getItem("token");
+
+    const response = await fetch("http://127.0.0.1:8001/tables/", {
+      headers: {
+        Authorization: `Token ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  };
+
+    const data = await response.json();
+    console.log("Data tabel:", data);
+
+    const tablesWithDetails = (data.tables || []).map((table) => ({
+      name: typeof table === "string" ? table : table.name,
+      records:
+        typeof table === "object"
+          ? table.records || table.actual_rows || 0
+          : 0,
+      size: typeof table === "object" ? table.size : "0 bytes",
+      lastModified:
+        typeof table === "object" && table.last_modified
+          ? new Date(table.last_modified)
+          : new Date(),
+      type: typeof table === "object" ? table.type || "BASE TABLE" : "BASE TABLE",
+      status: typeof table === "object" ? table.status || "active" : "active",
+      columns: typeof table === "object" ? table.columns || 0 : 0,
+    }));
+
+    setTables(tablesWithDetails);
+  } catch (err) {
+    console.error("Gagal mengambil tabel:", err);
+    setError(`Gagal mengambil data tabel: ${err.message}`);
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
+
 
   const filterAndSortTables = () => {
     let filtered = tables.filter(table =>
@@ -155,95 +174,89 @@ const TablesPage = () => {
   };
 
   const handleDeleteTable = async (tableName) => {
-    try {
-      setError("");
-      console.log(`Menghapus tabel: ${tableName}`);
-      
-      const response = await fetch(`http://127.0.0.1:8001/tables/${tableName}/`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+  try {
+    setError("");
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(`http://127.0.0.1:8001/tables/${tableName}/`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Token ${token}`,
+        "Content-Type": "application/json",
       }
-      
-      // Berhasil hapus, update state
-      setTables(prev => prev.filter(t => t.name !== tableName));
-      setSelectedTables(prev => prev.filter(t => t !== tableName));
-      setShowDeleteModal(false);
-      setTableToDelete(null);
-      
-      // Show success message (optional)
-      console.log(data.message);
-      
-    } catch (err) {
-      console.error("Gagal menghapus tabel:", err);
-      setError(`Gagal menghapus tabel: ${err.message}`);
-      setShowDeleteModal(false);
-      setTableToDelete(null);
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
     }
-  };
+
+    setTables(prev => prev.filter(t => t.name !== tableName));
+    setSelectedTables(prev => prev.filter(t => t !== tableName));
+    setShowDeleteModal(false);
+    setTableToDelete(null);
+  } catch (err) {
+    console.error("Gagal menghapus tabel:", err);
+    setError(`Gagal menghapus tabel: ${err.message}`);
+    setShowDeleteModal(false);
+    setTableToDelete(null);
+  }
+};
+
 
   const handleBulkDelete = async () => {
-    if (selectedTables.length === 0) return;
-    
-    try {
-      setError("");
-      console.log("Bulk delete:", selectedTables);
-      
-      const response = await fetch('http://127.0.0.1:8001/tables/bulk/delete/', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          table_names: selectedTables
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        // Handle specific error cases
-        if (data.details) {
-          let errorMsg = "Beberapa tabel tidak dapat dihapus:\\n";
-          if (data.details.protected_tables?.length > 0) {
-            errorMsg += `• Tabel yang dilindungi: ${data.details.protected_tables.join(', ')}\\n`;
-          }
-          if (data.details.missing_tables?.length > 0) {
-            errorMsg += `• Tabel tidak ditemukan: ${data.details.missing_tables.join(', ')}\\n`;
-          }
-          if (data.details.invalid_tables?.length > 0) {
-            errorMsg += `• Nama tabel tidak valid: ${data.details.invalid_tables.join(', ')}`;
-          }
-          throw new Error(errorMsg);
+  if (selectedTables.length === 0) return;
+
+  try {
+    setError("");
+    const token = localStorage.getItem("token");
+
+    const response = await fetch('http://127.0.0.1:8001/tables/bulk/delete/', {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Token ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        table_names: selectedTables
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (data.details) {
+        let errorMsg = "Beberapa tabel tidak dapat dihapus:\n";
+        if (data.details.protected_tables?.length > 0) {
+          errorMsg += `• Tabel yang dilindungi: ${data.details.protected_tables.join(', ')}\n`;
         }
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        if (data.details.missing_tables?.length > 0) {
+          errorMsg += `• Tabel tidak ditemukan: ${data.details.missing_tables.join(', ')}\n`;
+        }
+        if (data.details.invalid_tables?.length > 0) {
+          errorMsg += `• Nama tabel tidak valid: ${data.details.invalid_tables.join(', ')}`;
+        }
+        throw new Error(errorMsg);
       }
-      
-      // Update state berdasarkan hasil bulk delete
-      if (data.deleted_tables?.length > 0) {
-        setTables(prev => prev.filter(t => !data.deleted_tables.includes(t.name)));
-        setSelectedTables([]);
-        console.log(`${data.total_deleted} tabel berhasil dihapus`);
-      }
-      
-      // Show warning jika ada yang gagal
-      if (data.failed_tables?.length > 0) {
-        const failedNames = data.failed_tables.map(f => f.table).join(', ');
-        setError(`Beberapa tabel gagal dihapus: ${failedNames}`);
-      }
-      
-    } catch (err) {
-      console.error("Gagal bulk delete:", err);
-      setError(err.message);
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
     }
-  };
+
+    if (data.deleted_tables?.length > 0) {
+      setTables(prev => prev.filter(t => !data.deleted_tables.includes(t.name)));
+      setSelectedTables([]);
+    }
+
+    if (data.failed_tables?.length > 0) {
+      const failedNames = data.failed_tables.map(f => f.table).join(', ');
+      setError(`Beberapa tabel gagal dihapus: ${failedNames}`);
+    }
+  } catch (err) {
+    console.error("Gagal bulk delete:", err);
+    setError(err.message);
+  }
+};
+
 
   const formatDate = (date) => {
     try {

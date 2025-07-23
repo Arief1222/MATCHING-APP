@@ -7,19 +7,16 @@ const DetailModal = ({ result, onClose }) => {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
-        
+
         <div className="inline-block w-full max-w-4xl px-6 py-4 my-8 text-left transition-all transform bg-white rounded-lg shadow-xl sm:align-middle">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Match Details</h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <span className="sr-only">Close</span>
               ✕
             </button>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-6">
             <div>
               <h4 className="font-medium text-gray-900 mb-2">Basic Information</h4>
@@ -34,7 +31,7 @@ const DetailModal = ({ result, onClose }) => {
                 <div><strong>Created At:</strong> {new Date(result.created_at).toLocaleString('id-ID')}</div>
               </div>
             </div>
-            
+
             <div>
               <h4 className="font-medium text-gray-900 mb-2">Matched Data</h4>
               <div className="bg-gray-50 p-3 rounded-md max-h-64 overflow-y-auto">
@@ -44,7 +41,7 @@ const DetailModal = ({ result, onClose }) => {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-6 flex justify-end gap-3">
             <button
               onClick={onClose}
@@ -66,7 +63,7 @@ const MatchResultsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filters, setFilters] = useState({
-    status: 'MATCH', // atau 'UNMATCH' untuk halaman unmatch
+    status: 'MATCH',
     batch_id: '',
     source_table: '',
     reference_table: '',
@@ -79,7 +76,14 @@ const MatchResultsPage = () => {
     setSelectedResult(result);
   };
 
-  // Fetch data
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      'Authorization': `Token ${token}`,
+      'Content-Type': 'application/json'
+    };
+  };
+
   const fetchResults = async () => {
     setLoading(true);
     try {
@@ -88,10 +92,10 @@ const MatchResultsPage = () => {
         page_size: 20,
         ...filters
       });
-
-      const response = await fetch(`http://127.0.0.1:8001/categorized-results/?${params}`);
+      const response = await fetch(`http://127.0.0.1:8001/categorized-results/?${params}`, {
+        headers: getAuthHeaders()
+      });
       const data = await response.json();
-      
       setResults(data.results || []);
       setCategories(data.categories || {});
       setTotalPages(data.pagination?.total_pages || 1);
@@ -106,26 +110,18 @@ const MatchResultsPage = () => {
     fetchResults();
   }, [currentPage, filters]);
 
-  // Handle filter changes
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-    setCurrentPage(1); // Reset to first page when filtering
+    setCurrentPage(1);
   };
 
-  // Export functionality
   const handleExport = async (format = 'excel') => {
     try {
       const response = await fetch('http://127.0.0.1:8001/export-categorized/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...filters,
-          format
-        })
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ ...filters, format })
       });
-      
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);

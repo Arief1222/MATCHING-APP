@@ -24,6 +24,7 @@ const MatchingPage = ({
   const [recommendedCols, setRecommendedCols] = useState([]);
   const [showRecommendedCols, setShowRecommendedCols] = useState(false);
   const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const [isTableConfirmed, setIsTableConfirmed] = useState(false);
 
   useEffect(() => {
     fetchAvailableTables();
@@ -63,6 +64,7 @@ const MatchingPage = ({
     setSelectedColumnsA([]);
     setShowRecommendedCols(false);
     setShowColumnSelector(false);
+    setIsTableConfirmed(false);
     
     // Fetch recommendations jika self matching
     if (matchingType === "self") {
@@ -75,6 +77,7 @@ const MatchingPage = ({
     const columns = await fetchTableColumns(table.name);
     setColumnsB(columns);
     setSelectedColumnsB([]);
+    setIsTableConfirmed(false);
     
     // Fetch column mapping recommendations
     if (selectedTableA) {
@@ -312,6 +315,24 @@ const MatchingPage = ({
         )}
       </div>
 
+{selectedTableA && !isTableConfirmed && (
+  <div className="mt-4">
+    <button
+      onClick={() => {
+        setIsTableConfirmed(true);
+        if (matchingType === "self") {
+          fetchRecommendations(selectedTableA.name);
+        } else if (matchingType === "cross" && selectedTableA && selectedTableB) {
+          fetchColumnMappingRecommendations(selectedTableA.name, selectedTableB.name);
+        }
+      }}
+      className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold"
+    >
+      ✅ Konfirmasi Tabel
+    </button>
+  </div>
+          )}
+          
       {/* Rekomendasi Kolom */}
       {showRecommendedCols && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-sm">
