@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'background_task',
     'rest_framework', 
+    'rest_framework.authtoken',
     'api', 
     'corsheaders',
 ]
@@ -108,7 +109,10 @@ DATABASES = {
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
-    ]
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # ✅ Wajib ada ini
+    ],
 }
 
 # Password validation

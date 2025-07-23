@@ -22,6 +22,8 @@ from .views import (
     handle_table_operations
 )
 
+from .auth_views import CustomLoginView
+
 urlpatterns = [
     path('upload/', upload_file, name='upload_file'),
    # path('upload/', UploadDataView.as_view(), name='upload_data'),
@@ -35,7 +37,7 @@ urlpatterns = [
     path('retrain-model/', RetrainModelView.as_view(), name='retrain_model'),
     path('matching-stats/', GetMatchingStatsView.as_view(), name='matching_stats'),
     path('matching-jobs/', MatchingJobListView.as_view(), name='matching_jobs'),
-    path('api-token-auth/', obtain_auth_token),
+    path('login/', CustomLoginView.as_view(), name='user_login'),
     path('job-status/<str:job_id>/', JobStatusView.as_view(), name='job_status'),
     path('api/tables/', GetAvailableTablesView.as_view(), name='get_available_tables'),
     path('tables/<str:table_name>/', TableManagementView.as_view(), name='table_management'),

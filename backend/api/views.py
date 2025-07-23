@@ -21,6 +21,8 @@ import logging
 from .models import DataTable, MatchingResult, LabelingData, MatchingJob
 from .services.match_engine import MatchingEngine
 from .services.supabase_service import SupabaseService
+from .permission import IsSuperadmin, IsKepalaBPS, IsEmployee
+from rest_framework.permissions import IsAuthenticated
 
 
 
@@ -121,6 +123,17 @@ class TableManagementView(APIView):
     """
     View untuk CRUD operations pada tabel
     """
+    
+    def get_permissions(self):
+        # Todo: test apakah sudah benar
+        """
+        Return the appropriate permissions based on HTTP method.
+        """
+        if self.request.method == 'GET':
+            return [IsAuthenticated(), IsKepalaBPS() | IsSuperadmin() | IsEmployee()]
+        else:
+            # Selain GET, hanya superadmin dan employee yang diizinkan
+            return [IsAuthenticated(), IsSuperadmin() | IsEmployee()]
     
     def delete(self, request, table_name):
         """
@@ -321,6 +334,8 @@ class BulkTableOperationsView(APIView):
     View untuk operasi bulk pada multiple tabel
     """
     
+    permissions_classes = [IsSuperadmin]
+    
     def delete(self, request):
         """
         Bulk delete multiple tables
@@ -401,6 +416,7 @@ class BulkTableOperationsView(APIView):
 
 
 class GetRecommendedColumnsView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
     def post(self, request):
         """Get rekomendasi kolom untuk matching"""
         try:
@@ -463,6 +479,7 @@ class MatchingJobListView(APIView):
         ])
 
 class PrepareCombinedDataView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
     def post(self, request):
         try:
             table_name = request.data.get('table_name')
@@ -484,6 +501,7 @@ class PrepareCombinedDataView(APIView):
 
 # API view untuk start matching
 class StartMatchingView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
     def post(self, request):
         """Mulai proses matching secara background"""
         try:
@@ -535,6 +553,7 @@ class GetMatchingResultsView(APIView):
             return Response({'error': str(e)}, status=500)
 
 class GetLabelingDataView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
     def get(self, request):
         """Get data yang perlu dilabeling"""
         try:
@@ -552,6 +571,7 @@ class GetLabelingDataView(APIView):
             return Response({'error': str(e)}, status=500)
 
 class SubmitLabelingView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
     def post(self, request):
         """Submit hasil labeling manual"""
         try:
@@ -582,6 +602,7 @@ class SubmitLabelingView(APIView):
             return Response({'error': str(e)}, status=500)
 
 class RetrainModelView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
     def post(self, request):
         """Retrain XGBoost model dari data validasi"""
         try:
