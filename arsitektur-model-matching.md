@@ -6,8 +6,9 @@ Sistem ini merupakan pipeline pencocokan data yang menggabungkan pendekatan *sem
 
 ## 🧠 Arsitektur Matching Engine
 
-<img width="442" height="1746" alt="Untitled Diagram drawio (48)" src="https://github.com/user-attachments/assets/cc7ad658-330d-4cff-8c10-468dee3d5b1e" />
-
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/cc7ad658-330d-4cff-8c10-468dee3d5b1e" alt="Matching Flow Diagram" width="500"/>
+</p>
 
 ---
 
