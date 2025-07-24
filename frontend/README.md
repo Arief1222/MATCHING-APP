@@ -1,6 +1,8 @@
 # Cara Jalankan
 cd app
+
 npm install
+
 npm run dev
 
 # React + Vite
