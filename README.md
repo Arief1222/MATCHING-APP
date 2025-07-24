@@ -50,3 +50,27 @@ Aplikasi ini dikembangkan untuk:
 ```bash
 git clone https://github.com/Arief1222/MATCHING-APP.git
 cd MATCHING-APP
+
+### 2. Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+
+### 3. Backend
+```bash
+cd backend
+python -m env env
+source env/bin/activate  # Linux/MacOS
+env\Scripts\activate     # Windows
+pip install -r requirements.txt
+
+### 4. Supabase (self-host)
+```bash
+cd supabse-project
+docker compose pull       # Tarik image-image supabase
+docker compose up -d      # Menjalankan supabase secara lokal
+docker compose down     #jika ingin mematikan
+
+username dan password supabase
+https://supabase.com/docs/guides/self-hosting/docker
