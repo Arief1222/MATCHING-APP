@@ -97,8 +97,12 @@ Aktifkan virtual environment:
 ```bash
 pip install -r requirements.txt
 ```
+### c. update database
+```bash
+python manage.py migrate
+```
 
-#### c. Jalankan Server Django
+#### d. Jalankan Server Django
 
 ```bash
 python manage.py runserver 127.0.0.1:8001
