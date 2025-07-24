@@ -44,33 +44,86 @@ Aplikasi ini dikembangkan untuk:
 
 ---
 
-## 💻 Cara Menjalankan
+## 💻 Cara Menjalankan MATCHING-APP Secara Lokal
 
-### 1. Clone Repo
+Ikuti langkah-langkah berikut untuk menjalankan aplikasi secara lokal di lingkungan pengembangan:
+
+---
+
+### 1. Clone Repository
+
 ```bash
 git clone https://github.com/Arief1222/MATCHING-APP.git
 cd MATCHING-APP
+```
 
-### 2. Frontend
+---
+
+### 2. Menjalankan Frontend (React.js)
+
 ```bash
 cd frontend
 npm install
 npm run dev
+```
 
-### 3. Backend
+---
+
+### 3. Menjalankan Backend (Django)
+
+#### a. Buat dan Aktifkan Virtual Environment
+
 ```bash
-cd backend
-python -m env env
-source env/bin/activate  # Linux/MacOS
-env\Scripts\activate     # Windows
+cd ../backend
+python -m venv env
+```
+
+Aktifkan virtual environment:
+
+* **Linux / macOS**:
+
+  ```bash
+  source env/bin/activate
+  ```
+
+* **Windows**:
+
+  ```bash
+  env\Scripts\activate
+  ```
+
+#### b. Install Dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-### 4. Supabase (self-host)
+#### c. Jalankan Server Django
+
 ```bash
-cd supabse-project
-docker compose pull       # Tarik image-image supabase
-docker compose up -d      # Menjalankan supabase secara lokal
-docker compose down     #jika ingin mematikan
+python manage.py runserver 127.0.0.1:8001
+```
 
-username dan password supabase
-https://supabase.com/docs/guides/self-hosting/docker
+---
+
+### 4. Menjalankan Supabase (Self-hosted)
+
+```bash
+cd ../supabase-project
+docker compose pull         # Menarik semua image Supabase
+docker compose up -d        # Menjalankan Supabase di background
+```
+
+Untuk menghentikan Supabase:
+
+```bash
+docker compose down
+```
+
+---
+
+### 5. Login ke Supabase Studio
+
+Gunakan **username dan password default** sesuai dokumentasi Supabase:
+
+📖 [Supabase Self-Hosting Guide](https://supabase.com/docs/guides/self-hosting/docker)
