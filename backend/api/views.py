@@ -11,7 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .utils.Upload_handler import delete_table_by_name, export_table_to_excel, get_table_data, handle_uploaded_file #get_recommended_columns, process_combined_columns
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, permissions
+from rest_framework import status
 # from django.core.files.storage import default_storage
 # from django.core.files.base import ContentFile
 import pandas as pd
@@ -22,10 +22,8 @@ from .models import DataTable, MatchingResult, LabelingData, MatchingJob
 from .services.match_engine import MatchingEngine
 from .services.supabase_service import SupabaseService
 from .permission import IsSuperadmin, IsKepalaBPS, IsEmployee
-from rest_framework.permissions import IsAuthenticated, BasePermission
-from django.contrib.auth.hashers import make_password
-from django.core.exceptions import ObjectDoesNotExist
-from django.contrib.auth.models import User, Group
+from rest_framework.permissions import IsAuthenticated
+
 
 
 COMBINED_PATH = "combined.json"
@@ -1004,111 +1002,6 @@ class ExportCategorizedResultsView(APIView):
         except Exception as e:
             logger.error(f"Error in ExportCategorizedResultsView: {e}", exc_info=True)
             return Response({'error': str(e)}, status=500)
-        
-
-# Hanya Superadmin yang boleh akses view ini
-class IsSuperadmin(BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.groups.filter(name='superadmin').exists()
-
-class UserManagementView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsSuperadmin]
-
-    def get(self, request):
-        """
-        Menampilkan semua user dan role mereka.
-        """
-        users = User.objects.all()
-        data = []
-        for user in users:
-            data.append({
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-                "roles": [group.name for group in user.groups.all()]
-            })
-        return Response(data)
-
-    def post(self, request):
-        """
-        Membuat user baru beserta role-nya.
-        """
-        username = request.data.get('username')
-        email = request.data.get('email')
-        password = request.data.get('password')
-        role = request.data.get('role')
-
-        if not all([username, email, password, role]):
-            return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
-
-        if User.objects.filter(username=username).exists():
-            return Response({"error": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            group = Group.objects.get(name=role)
-        except Group.DoesNotExist:
-            return Response({"error": f"Role '{role}' tidak ditemukan"}, status=status.HTTP_400_BAD_REQUEST)
-
-        user = User.objects.create(
-            username=username,
-            email=email,
-            password=make_password(password)
-        )
-        user.groups.add(group)
-        return Response({
-            "message": "User created successfully",
-            "username": user.username,
-            "email": user.email,
-            "role": role
-        }, status=status.HTTP_201_CREATED)
-
-    def put(self, request):
-        """
-        Mengedit user berdasarkan ID. Hanya bisa ubah email, password, dan role.
-        """
-        user_id = request.data.get('id')
-        email = request.data.get('email')
-        password = request.data.get('password')
-        role = request.data.get('role')
-
-        if not user_id:
-            return Response({"error": "Missing user ID"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        if email:
-            user.email = email
-        if password:
-            user.password = make_password(password)
-        if role:
-            try:
-                group = Group.objects.get(name=role)
-                user.groups.clear()  # hapus semua role sebelumnya
-                user.groups.add(group)
-            except Group.DoesNotExist:
-                return Response({"error": f"Role '{role}' tidak ditemukan"}, status=status.HTTP_400_BAD_REQUEST)
-
-        user.save()
-        return Response({"message": "User updated successfully"})
-
-    def delete(self, request):
-        """
-        Menghapus user berdasarkan ID.
-        """
-        user_id = request.data.get('id')
-
-        if not user_id:
-            return Response({"error": "Missing user ID"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            user = User.objects.get(id=user_id)
-            user.delete()
-            return Response({"message": "User deleted successfully"})
-        except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['GET'])
 def progress_faiss(request):

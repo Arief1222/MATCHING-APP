@@ -19,8 +19,7 @@ from .views import (
     RetrainModelView,
     GetMatchingStatsView,
     GetAvailableTablesView,
-    handle_table_operations,
-    UserManagementView
+    handle_table_operations
 )
 
 from .auth_views import CustomLoginView
@@ -46,8 +45,7 @@ urlpatterns = [
     path('table-operations/', handle_table_operations, name='handle_table_operations'),
     path('categorized-results/', GetCategorizedMatchResultsView.as_view(), name='categorized_match_results'),
     path('matching-summary/', GetMatchingSummaryView.as_view(), name='matching_summary'),
-    path('export-categorized/', ExportCategorizedResultsView.as_view(), name='export_categorized'),
-    path('users/', UserManagementView.as_view(), name='user_management'),
+    path('export-categorized/', ExportCategorizedResultsView.as_view(), name='export_categorized')
 ]
     
 

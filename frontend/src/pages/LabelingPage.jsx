@@ -72,7 +72,7 @@ const LabelingInterface = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(`Data ${itemId} berhasil di-label sebagai ${label} dan disimpan ke db_final`);
+        setMessage(`Data ${itemId} berhasil di-labeli dan disimpan ke db_final`);
         setLabelingData(prev => prev.filter(item => item.id !== itemId));
         setSelectedLabels(prev => {
           const newLabels = { ...prev };
