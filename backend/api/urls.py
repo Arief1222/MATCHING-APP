@@ -23,7 +23,7 @@ from .views import (
     UserManagementView
 )
 
-from .auth_views import CustomLoginView
+from .views.auth_views import CustomLoginView
 
 urlpatterns = [
     # Auth Views
