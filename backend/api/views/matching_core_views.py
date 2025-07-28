@@ -1,0 +1,209 @@
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from background_task import background
+from ..permission import IsSuperadmin, IsEmployee
+from ..models import MatchingJob, LabelingData
+from ..services.match_engine import MatchingEngine
+import uuid
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+
+class JobStatusView(APIView):
+    def get(self, request, job_id):
+        try:
+            job = MatchingJob.objects.get(job_id=job_id)
+            return Response({
+                "job_id": job.job_id,
+                "table_name": job.table_name,
+                "status": job.status,
+                "start_time": job.start_time,
+                "end_time": job.end_time,
+            })
+        except MatchingJob.DoesNotExist:
+            return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class MatchingJobListView(APIView):
+    def get(self, request):
+        jobs = MatchingJob.objects.all().order_by('-start_time')
+        return Response([
+            {
+                "job_id": job.job_id,
+                "table_name": job.table_name,
+                "status": job.status,
+                "start_time": job.start_time,
+                "end_time": job.end_time,
+            }
+            for job in jobs
+        ])
+
+
+class GetRecommendedColumnsView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
+    def post(self, request):
+        """Get rekomendasi kolom untuk matching"""
+        try:
+            table_name = request.data.get('table_name')
+            table_b = request.data.get('table_b')  # Optional untuk cross-table matching
+            
+            if not table_name:
+                return Response({'error': 'table_name required'}, status=400)
+            
+            matching_engine = MatchingEngine()
+            
+            # Get recommendations untuk table utama
+            recommendations = matching_engine.get_recommended_columns(table_name)
+            
+            result = {
+                'table_a_recommendations': recommendations
+            }
+            
+            # Jika ada table_b, berikan rekomendasi mapping
+            if table_b:
+                column_mapping = matching_engine.recommend_column_mapping(table_name, table_b)
+                result['column_mapping_recommendations'] = column_mapping
+                result['table_b_recommendations'] = matching_engine.get_recommended_columns(table_b)
+            
+            return Response(result)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+class PrepareCombinedDataView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
+    def post(self, request):
+        try:
+            table_name = request.data.get('table_name')
+            selected_columns = request.data.get('selected_columns')
+            
+            if not table_name or not selected_columns:
+                return Response({'error': 'table_name and selected_columns required'}, status=400)
+
+            engine = MatchingEngine()
+            df_combined = engine.prepare_combined_data(table_name, selected_columns)
+            
+            if df_combined is None:
+                return Response({'error': 'Data kosong atau gagal diproses'}, status=400)
+            
+            return Response({'data': df_combined.to_dict(orient='records')})
+        
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+@background(schedule=1)
+def run_matching_background(job_id, table_a, table_b, columns_a, columns_b):
+    engine = MatchingEngine()
+    try:
+        engine.run_complete_matching(table_a, table_b, columns_a, columns_b)
+
+        # Setelah sukses:
+        engine.update_job_status(job_id=job_id, status="Success")
+        logger.info(f"Matching job {job_id} completed successfully.")
+    
+    except Exception as e:
+        # Kalau error:
+        engine.update_job_status(job_id=job_id, status="Failed")
+        logger.error(f"Matching job {job_id} failed: {str(e)}")
+        raise e
+
+
+class StartMatchingView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
+    def post(self, request):
+        """Mulai proses matching secara background"""
+        try:
+            table_a = request.data.get('table_a')
+            table_b = request.data.get('table_b')
+            columns_a = request.data.get('columns_a')
+            columns_b = request.data.get('columns_b')
+           
+            
+            if not table_a or not columns_a:
+                return Response({'error': 'table_a and columns_a required'}, status=400)
+
+            job_id = str(uuid.uuid4())
+            
+            matching_engine = MatchingEngine()
+            matching_engine.save_job_status(job_id, table_a)  # Simpan status 'Pending'
+
+            # Kirim ke background
+            run_matching_background(job_id, table_a, table_b, columns_a, columns_b)
+
+            return Response({'job_id': job_id, 'status': 'Pending'})
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+class GetLabelingDataView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
+    def get(self, request):
+        """Get data yang perlu dilabeling"""
+        try:
+            # Get unlabeled data
+            unlabeled = LabelingData.objects.filter(
+                label__isnull=True
+            ).values()
+            
+            return Response({
+                'unlabeled_data': list(unlabeled),
+                'total_count': len(unlabeled)
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+class SubmitLabelingView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
+    def post(self, request):
+        """Submit hasil labeling manual"""
+        try:
+            labeling_id = request.data.get('labeling_id')
+            label = request.data.get('label')  # 'MATCH' atau 'UNMATCH'
+            
+            if not labeling_id or not label:
+                return Response({'error': 'labeling_id and label required'}, status=400)
+            
+            if label not in ['MATCH', 'UNMATCH']:
+                return Response({'error': 'label must be MATCH or UNMATCH'}, status=400)
+            
+            # Update labeling data
+            labeling_data = LabelingData.objects.get(id=labeling_id)
+            labeling_data.label = label
+            labeling_data.confirmed_by = request.user
+            labeling_data.save()
+            
+            return Response({
+                'message': 'Labeling submitted successfully',
+                'labeling_id': labeling_id,
+                'label': label
+            })
+            
+        except LabelingData.DoesNotExist:
+            return Response({'error': 'Labeling data not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+class RetrainModelView(APIView):
+    permission_classes = [IsSuperadmin | IsEmployee]
+    def post(self, request):
+        """Retrain XGBoost model dari data validasi"""
+        try:
+            matching_engine = MatchingEngine()
+            result = matching_engine.train_xgb_from_validasi()
+            
+            return Response({
+                'message': 'Model retrain completed',
+                'result': result
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)

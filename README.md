@@ -1,10 +1,10 @@
-# 🧩 MATCHING-APP
+#  MATCHING-APP
 
 MATCHING-APP adalah aplikasi web untuk **mendeteksi duplikasi data** dan **mencocokkan entitas** dari dua sumber dataset yang berbeda. Sistem ini mendukung proses **matching otomatis** menggunakan FAISS, Fuzzy Matching, dan XGBoost, serta menyediakan fitur **labeling manual** untuk meningkatkan akurasi melalui data teranotasi.
 
 ---
 
-## 🎯 Tujuan
+##  Tujuan
 
 Aplikasi ini dikembangkan untuk:
 - Menghapus data duplikat antar sumber dataset
@@ -14,7 +14,7 @@ Aplikasi ini dikembangkan untuk:
 
 ---
 
-## 👤 Peran Pengguna
+##  Peran Pengguna
 
 - **Superadmin:** Membuat akun employee, mengatur tugas labeling
 - **Employee:** Melakukan labeling pada data yang belum pasti
@@ -22,7 +22,7 @@ Aplikasi ini dikembangkan untuk:
 
 ---
 
-## ⚙️ Teknologi yang Digunakan
+##  Teknologi yang Digunakan
 
 - [React.js](https://reactjs.org/)
 - [Supabase](https://supabase.com/) (self-hosted via Docker)
@@ -33,7 +33,7 @@ Aplikasi ini dikembangkan untuk:
 
 ---
 
-## 🚀 Fitur Utama
+##  Fitur Utama
 
 - ✅ Upload dua file dataset (A & B)
 - 🤖 Matching otomatis (FAISS, Fuzzy Matching, XGBoost)
@@ -44,7 +44,7 @@ Aplikasi ini dikembangkan untuk:
 
 ---
 
-## 💻 Cara Menjalankan MATCHING-APP Secara Lokal
+##  Cara Menjalankan MATCHING-APP Secara Lokal
 
 Ikuti langkah-langkah berikut untuk menjalankan aplikasi secara lokal di lingkungan pengembangan:
 
