@@ -108,18 +108,29 @@ class PrepareCombinedDataView(APIView):
 
             # Cek apakah tabel ada di database
             with connection.cursor() as cursor:
-                # Cek apakah tabel ada
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=%s", [table_name])
+                # PostgreSQL: Cek apakah tabel ada menggunakan information_schema
+                cursor.execute("""
+                    SELECT table_name 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = %s
+                """, [table_name])
                 table_exists = cursor.fetchone()
                 
                 if not table_exists:
                     logger.error(f"Table '{table_name}' does not exist")
                     return Response({'error': f'Tabel "{table_name}" tidak ditemukan'}, status=400)
                 
-                # Cek kolom yang ada di tabel
-                cursor.execute(f"PRAGMA table_info({table_name})")
+                # PostgreSQL: Cek kolom yang ada di tabel menggunakan information_schema
+                cursor.execute("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_schema = 'public' 
+                    AND table_name = %s
+                    ORDER BY ordinal_position
+                """, [table_name])
                 columns_info = cursor.fetchall()
-                existing_columns = [col[1] for col in columns_info]  # col[1] is column name
+                existing_columns = [col[0] for col in columns_info]  # col[0] is column name
                 
                 logger.info(f"Existing columns in table '{table_name}': {existing_columns}")
                 
@@ -133,8 +144,8 @@ class PrepareCombinedDataView(APIView):
                         'requested_columns': selected_columns
                     }, status=400)
                 
-                # Cek jumlah data di tabel
-                cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+                # Cek jumlah data di tabel - menggunakan quoted identifier untuk keamanan
+                cursor.execute(f'SELECT COUNT(*) FROM "{table_name}"')
                 row_count = cursor.fetchone()[0]
                 logger.info(f"Table '{table_name}' has {row_count} rows")
                 
