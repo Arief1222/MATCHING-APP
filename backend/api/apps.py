@@ -6,4 +6,4 @@ class ApiConfig(AppConfig):
     name = 'api'
     
     def ready(self):
-        import api.signals  # pastikan ini ada!
+        import api.signals  # pastikan ini ad

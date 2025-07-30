@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Check, 
-  X, 
-  RefreshCw, 
-  AlertCircle, 
+import {
+  Users,
+  Plus,
+  Edit,
+  Trash2,
+  Check,
+  X,
+  RefreshCw,
+  AlertCircle,
   CheckCircle,
   UserCheck,
   UserX,
@@ -60,11 +60,11 @@ const AssignmentPage = () => {
     const headers = {
       'Content-Type': 'application/json'
     };
-    
+
     if (token) {
       headers['Authorization'] = `Token ${token}`;
     }
-    
+
     console.log('API Headers:', headers); // Debug log
     return headers;
   };
@@ -106,13 +106,13 @@ const AssignmentPage = () => {
       const response = await fetch('http://127.0.0.1:8001/users/', {
         headers: getApiHeaders()
       });
-      
+
       console.log('Users response status:', response.status); // Debug log
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('Users response data:', data); // Debug log
-        
+
         // Handle different response formats
         let usersArray = [];
         if (Array.isArray(data)) {
@@ -124,7 +124,7 @@ const AssignmentPage = () => {
         } else if (data.results && Array.isArray(data.results)) {
           usersArray = data.results;
         }
-        
+
         console.log('Setting users:', usersArray); // Debug log
         setUsers(usersArray);
       } else {
@@ -146,14 +146,13 @@ const AssignmentPage = () => {
       const response = await fetch('http://127.0.0.1:8001/assignments/', {
         headers: getApiHeaders()
       });
-      
+
       console.log('Assignments response status:', response.status); // Debug log
-      
+
       if (response.ok) {
         const data = await response.json();
-        console.log('Assignments response data:', data); // Debug log
-        
-        // Pastikan assignments adalah array dan setiap assignment memiliki employee_assignments
+        console.log('Assignments response data:', data);
+
         const processedAssignments = Array.isArray(data) ? data.map(assignment => ({
           ...assignment,
           employee_assignments: Array.isArray(assignment.employee_assignments) ? assignment.employee_assignments : []
@@ -171,62 +170,62 @@ const AssignmentPage = () => {
     }
   };
 
- // 3. PERBAIKAN: Enhanced loadDataTables function
-const loadDataTables = async () => {
-  try {
-    console.log('=== Loading Data Tables ===');
-    const response = await fetch('http://127.0.0.1:8001/tables/', {
-      headers: getApiHeaders()
-    });
-    
-    console.log('Tables response status:', response.status);
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('Raw tables response:', data);
-      
-      // PERBAIKAN: More robust response handling
-      let tablesArray = [];
-      if (Array.isArray(data)) {
-        tablesArray = data;
-      } else if (data.tables && Array.isArray(data.tables)) {
-        tablesArray = data.tables;
-      } else if (data.data && Array.isArray(data.data)) {
-        tablesArray = data.data;
-      } else if (data.results && Array.isArray(data.results)) {
-        tablesArray = data.results;
-      }
-      
-      // PERBAIKAN: Consistent table processing
-      const processedTables = tablesArray.map((table, index) => {
-        const processedTable = {
-          ...table,
-          // Pastikan ada name yang valid
-          name: table.name || `table_${index}`,
-          records: table.records || table.row_count || 0,
-          row_count: table.row_count || table.records || 0,
-          // Tambahkan display_name untuk UI
-          display_name: table.name ? `${table.name} (${table.records || table.row_count || 0} rows)` : `Table ${index + 1}`
-        };
-        
-        console.log(`Processed table ${index}:`, processedTable);
-        return processedTable;
+  // 3. PERBAIKAN: Enhanced loadDataTables function
+  const loadDataTables = async () => {
+    try {
+      console.log('=== Loading Data Tables ===');
+      const response = await fetch('http://127.0.0.1:8001/tables/', {
+        headers: getApiHeaders()
       });
-      
-      console.log('Final processed tables:', processedTables);
-      setDataTables(processedTables);
-    } else {
-      const errorText = await response.text();
-      console.error('Failed to load data tables:', errorText);
+
+      console.log('Tables response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Raw tables response:', data);
+
+        // PERBAIKAN: More robust response handling
+        let tablesArray = [];
+        if (Array.isArray(data)) {
+          tablesArray = data;
+        } else if (data.tables && Array.isArray(data.tables)) {
+          tablesArray = data.tables;
+        } else if (data.data && Array.isArray(data.data)) {
+          tablesArray = data.data;
+        } else if (data.results && Array.isArray(data.results)) {
+          tablesArray = data.results;
+        }
+
+        // PERBAIKAN: Consistent table processing
+        const processedTables = tablesArray.map((table, index) => {
+          const processedTable = {
+            ...table,
+            // Pastikan ada name yang valid
+            name: table.name || `table_${index}`,
+            records: table.records || table.row_count || 0,
+            row_count: table.row_count || table.records || 0,
+            // Tambahkan display_name untuk UI
+            display_name: table.name ? `${table.name} (${table.records || table.row_count || 0} rows)` : `Table ${index + 1}`
+          };
+
+          console.log(`Processed table ${index}:`, processedTable);
+          return processedTable;
+        });
+
+        console.log('Final processed tables:', processedTables);
+        setDataTables(processedTables);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to load data tables:', errorText);
+        setDataTables([]);
+        showMessage('Gagal memuat data tables: ' + errorText, 'error');
+      }
+    } catch (error) {
+      console.error('Error loading data tables:', error);
       setDataTables([]);
-      showMessage('Gagal memuat data tables: ' + errorText, 'error');
+      showMessage('Error loading data tables: ' + error.message, 'error');
     }
-  } catch (error) {
-    console.error('Error loading data tables:', error);
-    setDataTables([]);
-    showMessage('Error loading data tables: ' + error.message, 'error');
-  }
-};
+  };
 
   // Load Employees - FIXED TO USE DEDICATED ENDPOINT
   const loadEmployees = async () => {
@@ -235,13 +234,13 @@ const loadDataTables = async () => {
       const response = await fetch('http://127.0.0.1:8001/employees/', {
         headers: getApiHeaders()
       });
-      
+
       console.log('Employees response status:', response.status); // Debug log
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('Employees response data:', data); // Debug log
-        
+
         // Handle response format
         let employeesArray = [];
         if (Array.isArray(data)) {
@@ -249,7 +248,7 @@ const loadDataTables = async () => {
         } else if (data.employees && Array.isArray(data.employees)) {
           employeesArray = data.employees;
         }
-        
+
         console.log('Setting employees:', employeesArray); // Debug log
         setEmployees(employeesArray);
       } else {
@@ -267,7 +266,7 @@ const loadDataTables = async () => {
   // User Management Functions
   const handleAddUser = async (e) => {
     e.preventDefault();
-    
+
     // Validasi input
     if (!newUser.username || !newUser.email || !newUser.password) {
       showMessage('Semua field wajib diisi', 'error');
@@ -288,7 +287,7 @@ const loadDataTables = async () => {
     }
 
     setSubmitting(true);
-    
+
     try {
       // Prepare payload dengan struktur yang benar
       const payload = {
@@ -312,11 +311,11 @@ const loadDataTables = async () => {
         const result = await response.json();
         console.log('Success response:', result); // Debug log
         showMessage('User berhasil ditambahkan', 'success');
-        
+
         // Reset form
         setNewUser({ username: '', email: '', password: '', role: 'employee' });
         setShowAddUserForm(false);
-        
+
         // Force reload users and employees with a small delay to ensure backend has processed
         setTimeout(async () => {
           console.log('Reloading users and employees after successful creation...'); // Debug log
@@ -327,7 +326,7 @@ const loadDataTables = async () => {
         try {
           const errorData = await response.json();
           console.error('Error response:', errorData); // Debug log
-          
+
           // Handle different error formats
           if (errorData.error) {
             errorMessage = errorData.error;
@@ -397,65 +396,57 @@ const loadDataTables = async () => {
     }
   };
 
-// Frontend - AssignmentPage.jsx - handleCreateAssignment function yang diperbaiki
+  // Frontend - AssignmentPage.jsx - handleCreateAssignment function yang diperbaiki
 
-// 1. PERBAIKAN: Simplifikasi logika dataset selection
-const handleCreateAssignment = async (e) => {
-  e.preventDefault();
-  
-  console.log('=== Assignment Form Submission ===');
-  console.log('Form data:', newAssignment);
-  console.log('Available dataTables:', dataTables);
-  console.log('Available employees:', employees);
-  
-  // Validasi form
-  if (!newAssignment.title.trim()) {
-    showMessage('Judul assignment harus diisi', 'error');
-    return;
-  }
-  
-  if (!newAssignment.dataset) {
-    showMessage('Dataset harus dipilih', 'error');
-    return;
-  }
-  
-  if (!newAssignment.employees || newAssignment.employees.length === 0) {
-    showMessage('Minimal 1 employee harus dipilih', 'error');
-    return;
-  }
+  // 1. PERBAIKAN: Simplifikasi logika dataset selection
+  const handleCreateAssignment = async (e) => {
+    e.preventDefault();
 
-  setSubmitting(true);
-  
-  try {
-    // PERBAIKAN: Gunakan dataset value langsung tanpa pencarian kompleks
-    const payload = {
-      title: newAssignment.title.trim(),
-      description: newAssignment.description.trim() || "",
-      dataset: newAssignment.dataset, // Langsung gunakan value yang dipilih
-      employees: newAssignment.employees.map(id => parseInt(id))
-    };
-    
-    console.log('=== Sending Payload ===');
-    console.log('Payload:', payload);
-    console.log('API Headers:', getApiHeaders());
-    
-    const response = await fetch('http://127.0.0.1:8001/assignments/', {
-      method: 'POST',
-      headers: getApiHeaders(),
-      body: JSON.stringify(payload)
-    });
-    
-    console.log('=== API Response ===');
-    console.log('Status:', response.status);
-    console.log('Status Text:', response.statusText);
-    
-    if (response.ok) {
-      try {
+    console.log('=== Assignment Form Submission ===');
+    console.log('Form data:', newAssignment);
+
+    // Validasi form
+    if (!newAssignment.title.trim()) {
+      showMessage('Judul assignment harus diisi', 'error');
+      return;
+    }
+
+    if (!newAssignment.dataset) {
+      showMessage('Dataset harus dipilih', 'error');
+      return;
+    }
+
+    if (!newAssignment.employees || newAssignment.employees.length === 0) {
+      showMessage('Minimal 1 employee harus dipilih', 'error');
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const payload = {
+        title: newAssignment.title.trim(),
+        description: newAssignment.description.trim() || "",
+        dataset: newAssignment.dataset, // Gunakan name dataset
+        employees: newAssignment.employees.map(id => parseInt(id))
+      };
+
+      console.log('Sending payload:', payload);
+
+      const response = await fetch('http://127.0.0.1:8001/assignments/', {
+        method: 'POST',
+        headers: getApiHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      console.log('Response status:', response.status);
+
+      if (response.ok) {
         const result = await response.json();
         console.log('Success result:', result);
-        
-        showMessage(`Assignment "${newAssignment.title}" berhasil dibuat!`, 'success');
-        
+
+        showMessage(`Assignment "${newAssignment.title}" berhasil dibuat dan data telah didistribusikan secara rata!`, 'success');
+
         // Reset form
         setNewAssignment({
           title: '',
@@ -464,100 +455,72 @@ const handleCreateAssignment = async (e) => {
           employees: []
         });
         setShowCreateAssignmentForm(false);
-        
+
         // Reload assignments
         setTimeout(() => {
           loadAssignments();
         }, 500);
-        
-      } catch (jsonError) {
-        console.error('Error parsing success response:', jsonError);
-        // Meskipun ada error parsing, assignment mungkin sudah berhasil dibuat
-        showMessage('Assignment berhasil dibuat!', 'success');
-        setShowCreateAssignmentForm(false);
-        setNewAssignment({
-          title: '',
-          description: '',
-          dataset: '',
-          employees: []
-        });
-        loadAssignments();
-      }
-    } else {
-      // PERBAIKAN: Enhanced error handling
-      let errorMessage = `Error ${response.status}: Failed to create assignment`;
-      
-      try {
-        const errorData = await response.json();
-        console.log('Error response data:', errorData);
-        
-        if (errorData.error) {
-          errorMessage = errorData.error;
-        } else if (errorData.detail) {
-          errorMessage = errorData.detail;
-        } else if (typeof errorData === 'object') {
-          // Handle field-specific errors
-          const fieldErrors = [];
-          Object.keys(errorData).forEach(field => {
-            const fieldError = Array.isArray(errorData[field]) ? 
-              errorData[field].join(', ') : errorData[field];
-            fieldErrors.push(`${field}: ${fieldError}`);
-          });
-          if (fieldErrors.length > 0) {
-            errorMessage = fieldErrors.join('; ');
-          }
-        }
-        
-      } catch (jsonError) {
-        console.error('Error parsing error response:', jsonError);
-        const errorText = await response.text();
-        console.log('Error response text:', errorText);
-        errorMessage = `Server error ${response.status}: ${errorText.substring(0, 200)}`;
-      }
-      
-      showMessage(errorMessage, 'error');
-    }
-    
-  } catch (networkError) {
-    console.error('=== Network Error ===');
-    console.error('Network error:', networkError);
-    console.error('Error stack:', networkError.stack);
-    
-    // PERBAIKAN: Detailed network error logging
-    console.error('Request details:', {
-      url: 'http://127.0.0.1:8001/assignments/',
-      method: 'POST',
-      headers: getApiHeaders(),
-      payload: {
-        title: newAssignment.title.trim(),
-        description: newAssignment.description.trim() || "",
-        dataset: newAssignment.dataset,
-        employees: newAssignment.employees.map(id => parseInt(id))
-      }
-    });
-    
-    showMessage(`Network error: ${networkError.message}`, 'error');
-  } finally {
-    setSubmitting(false);
-  }
-};
 
-// 4. PERBAIKAN: Enhanced employee selection with validation
-const handleEmployeeSelection = (employeeId) => {
-  console.log('Employee selection:', employeeId, typeof employeeId);
-  
-  // PERBAIKAN: Ensure employeeId is number
-  const numericEmployeeId = typeof employeeId === 'string' ? parseInt(employeeId) : employeeId;
-  
-  setNewAssignment(prev => ({
-    ...prev,
-    employees: prev.employees.includes(numericEmployeeId)
-      ? prev.employees.filter(id => id !== numericEmployeeId)
-      : [...prev.employees, numericEmployeeId]
-  }));
-  
-  console.log('Updated employees:', newAssignment.employees);
-};
+      } else {
+        let errorMessage = `Error ${response.status}: Failed to create assignment`;
+
+        try {
+          const errorData = await response.json();
+          console.log('Error response data:', errorData);
+
+          // Handle berbagai format error
+          if (typeof errorData === 'object') {
+            const errorMessages = [];
+
+            // Handle field-specific errors
+            Object.keys(errorData).forEach(field => {
+              const fieldError = errorData[field];
+              if (Array.isArray(fieldError)) {
+                errorMessages.push(`${field}: ${fieldError.join(', ')}`);
+              } else if (typeof fieldError === 'string') {
+                errorMessages.push(`${field}: ${fieldError}`);
+              } else if (typeof fieldError === 'object') {
+                errorMessages.push(`${field}: ${JSON.stringify(fieldError)}`);
+              }
+            });
+
+            if (errorMessages.length > 0) {
+              errorMessage = errorMessages.join('; ');
+            }
+          }
+
+        } catch (jsonError) {
+          const errorText = await response.text();
+          console.log('Error response text:', errorText);
+          errorMessage = `Server error ${response.status}: ${errorText.substring(0, 200)}`;
+        }
+
+        showMessage(errorMessage, 'error');
+      }
+
+    } catch (networkError) {
+      console.error('Network error:', networkError);
+      showMessage(`Network error: ${networkError.message}`, 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  // 4. PERBAIKAN: Enhanced employee selection with validation
+  const handleEmployeeSelection = (employeeId) => {
+    console.log('Employee selection:', employeeId, typeof employeeId);
+
+    // PERBAIKAN: Ensure employeeId is number
+    const numericEmployeeId = typeof employeeId === 'string' ? parseInt(employeeId) : employeeId;
+
+    setNewAssignment(prev => ({
+      ...prev,
+      employees: prev.employees.includes(numericEmployeeId)
+        ? prev.employees.filter(id => id !== numericEmployeeId)
+        : [...prev.employees, numericEmployeeId]
+    }));
+
+    console.log('Updated employees:', newAssignment.employees);
+  };
 
   const updateAssignmentStatus = async (assignmentId, newStatus) => {
     try {
@@ -589,49 +552,49 @@ const handleEmployeeSelection = (employeeId) => {
   };
 
   const validateAssignmentForm = () => {
-  const errors = [];
-  
-  if (!newAssignment.title.trim()) {
-    errors.push('Judul assignment harus diisi');
-  }
-  
-  if (!newAssignment.dataset) {
-    errors.push('Dataset harus dipilih');
-  }
-  
-  if (!newAssignment.employees || newAssignment.employees.length === 0) {
-    errors.push('Minimal 1 employee harus dipilih');
-  }
-  
-  // Validate dataset exists in available tables
-  if (newAssignment.dataset && !dataTables.find(table => table.name === newAssignment.dataset)) {
-    errors.push('Dataset yang dipilih tidak valid');
-  }
-  
-  // Validate employees exist
-  if (newAssignment.employees) {
-    const invalidEmployees = newAssignment.employees.filter(empId => 
-      !employees.find(emp => emp.id === empId)
-    );
-    if (invalidEmployees.length > 0) {
-      errors.push(`Employee dengan ID ${invalidEmployees.join(', ')} tidak valid`);
-    }
-  }
-  
-  return errors;
-};
+    const errors = [];
 
-// 6. PERBAIKAN: Enhanced debugging helper
-const debugFormState = () => {
-  console.log('=== DEBUG FORM STATE ===');
-  console.log('newAssignment:', newAssignment);
-  console.log('dataTables count:', dataTables.length);
-  console.log('employees count:', employees.length);
-  console.log('Selected dataset:', newAssignment.dataset);
-  console.log('Selected employees:', newAssignment.employees);
-  console.log('Available datasets:', dataTables.map(t => ({ name: t.name, records: t.records })));
-  console.log('Available employees:', employees.map(e => ({ id: e.id, username: e.username })));
-};
+    if (!newAssignment.title.trim()) {
+      errors.push('Judul assignment harus diisi');
+    }
+
+    if (!newAssignment.dataset) {
+      errors.push('Dataset harus dipilih');
+    }
+
+    if (!newAssignment.employees || newAssignment.employees.length === 0) {
+      errors.push('Minimal 1 employee harus dipilih');
+    }
+
+    // Validate dataset exists in available tables
+    if (newAssignment.dataset && !dataTables.find(table => table.name === newAssignment.dataset)) {
+      errors.push('Dataset yang dipilih tidak valid');
+    }
+
+    // Validate employees exist
+    if (newAssignment.employees) {
+      const invalidEmployees = newAssignment.employees.filter(empId =>
+        !employees.find(emp => emp.id === empId)
+      );
+      if (invalidEmployees.length > 0) {
+        errors.push(`Employee dengan ID ${invalidEmployees.join(', ')} tidak valid`);
+      }
+    }
+
+    return errors;
+  };
+
+  // 6. PERBAIKAN: Enhanced debugging helper
+  const debugFormState = () => {
+    console.log('=== DEBUG FORM STATE ===');
+    console.log('newAssignment:', newAssignment);
+    console.log('dataTables count:', dataTables.length);
+    console.log('employees count:', employees.length);
+    console.log('Selected dataset:', newAssignment.dataset);
+    console.log('Selected employees:', newAssignment.employees);
+    console.log('Available datasets:', dataTables.map(t => ({ name: t.name, records: t.records })));
+    console.log('Available employees:', employees.map(e => ({ id: e.id, username: e.username })));
+  };
 
   // Render loading state
   if (loading) {
@@ -652,28 +615,25 @@ const debugFormState = () => {
           <p className="text-gray-600">Kelola user dan distribusi tugas pelabelan data</p>
 
           {message && (
-            <div className={`mt-4 p-4 border rounded-lg flex items-center ${
-              messageType === 'success' ? 'bg-green-50 border-green-200' :
-              messageType === 'error' ? 'bg-red-50 border-red-200' :
-              'bg-blue-50 border-blue-200'
-            }`}>
-              <AlertCircle className={`w-5 h-5 mr-2 ${
-                messageType === 'success' ? 'text-green-600' :
-                messageType === 'error' ? 'text-red-600' :
-                'text-blue-600'
-              }`} />
+            <div className={`mt-4 p-4 border rounded-lg flex items-center ${messageType === 'success' ? 'bg-green-50 border-green-200' :
+                messageType === 'error' ? 'bg-red-50 border-red-200' :
+                  'bg-blue-50 border-blue-200'
+              }`}>
+              <AlertCircle className={`w-5 h-5 mr-2 ${messageType === 'success' ? 'text-green-600' :
+                  messageType === 'error' ? 'text-red-600' :
+                    'text-blue-600'
+                }`} />
               <span className={
                 messageType === 'success' ? 'text-green-800' :
-                messageType === 'error' ? 'text-red-800' :
-                'text-blue-800'
+                  messageType === 'error' ? 'text-red-800' :
+                    'text-blue-800'
               }>{message}</span>
-              <button 
+              <button
                 onClick={() => setMessage('')}
-                className={`ml-auto ${
-                  messageType === 'success' ? 'text-green-600 hover:text-green-800' :
-                  messageType === 'error' ? 'text-red-600 hover:text-red-800' :
-                  'text-blue-600 hover:text-blue-800'
-                }`}
+                className={`ml-auto ${messageType === 'success' ? 'text-green-600 hover:text-green-800' :
+                    messageType === 'error' ? 'text-red-600 hover:text-red-800' :
+                      'text-blue-600 hover:text-blue-800'
+                  }`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -686,22 +646,20 @@ const debugFormState = () => {
           <nav className="flex space-x-8 px-6">
             <button
               onClick={() => setActiveTab('users')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'users'
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'users'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               <Users className="w-4 h-4 inline mr-2" />
               Manajemen User ({Array.isArray(users) ? users.length : 0})
             </button>
             <button
               onClick={() => setActiveTab('assignments')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'assignments'
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'assignments'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               <ClipboardList className="w-4 h-4 inline mr-2" />
               Assignment ({assignments.length})
@@ -754,7 +712,7 @@ const debugFormState = () => {
                             type="text"
                             required
                             value={newUser.username}
-                            onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+                            onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -766,7 +724,7 @@ const debugFormState = () => {
                             type="email"
                             required
                             value={newUser.email}
-                            onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                            onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -778,7 +736,7 @@ const debugFormState = () => {
                             type="password"
                             required
                             value={newUser.password}
-                            onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                            onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -788,7 +746,7 @@ const debugFormState = () => {
                           </label>
                           <select
                             value={newUser.role}
-                            onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                            onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             <option value="employee">Employee</option>
@@ -937,7 +895,7 @@ const debugFormState = () => {
                             type="text"
                             required
                             value={newAssignment.title}
-                            onChange={(e) => setNewAssignment({...newAssignment, title: e.target.value})}
+                            onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -947,7 +905,7 @@ const debugFormState = () => {
                           </label>
                           <textarea
                             value={newAssignment.description}
-                            onChange={(e) => setNewAssignment({...newAssignment, description: e.target.value})}
+                            onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })}
                             rows={3}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
@@ -961,21 +919,17 @@ const debugFormState = () => {
                             value={newAssignment.dataset}
                             onChange={(e) => {
                               console.log('Dataset selected:', e.target.value);
-                              setNewAssignment({...newAssignment, dataset: e.target.value})
+                              setNewAssignment({ ...newAssignment, dataset: e.target.value })
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             <option value="">-- Pilih Dataset --</option>
                             {dataTables.map((table, index) => {
-                              // PERBAIKAN: Gunakan name sebagai value secara konsisten
-                              const tableId = table.name || `table_${index}`;
-                              const tableName = table.name || `Table ${index + 1}`;
+                              const tableName = table.name || `table_${index}`;
                               const rowCount = table.records || table.row_count || 0;
-                              
-                              console.log('Table option:', { tableId, tableName, rowCount });
-                              
+
                               return (
-                                <option key={tableId} value={tableName}>
+                                <option key={tableName} value={tableName}>
                                   {tableName} ({rowCount} rows)
                                 </option>
                               );
@@ -987,7 +941,7 @@ const debugFormState = () => {
                             </p>
                           )}
                           <p className="text-xs text-gray-500 mt-1">
-                            Current selection: {newAssignment.dataset || 'None'}
+                            Dataset akan dibagi rata ke semua employee yang dipilih
                           </p>
                         </div>
                         <div>
@@ -1007,8 +961,8 @@ const debugFormState = () => {
                                   <div>
                                     <p className="font-medium">{employee.username}</p>
                                     <p className="text-sm text-gray-500">
-                                      {employee.first_name && employee.last_name ? 
-                                        `${employee.first_name} ${employee.last_name}` : 
+                                      {employee.first_name && employee.last_name ?
+                                        `${employee.first_name} ${employee.last_name}` :
                                         employee.email || 'No additional info'
                                       }
                                     </p>
@@ -1038,13 +992,13 @@ const debugFormState = () => {
                           Batal
                         </button>
                         <button
-                            type="submit"
-                            disabled={submitting}
-                            onClick={() => debugFormState()} // Debug sebelum submit
-                            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                          >
-                            {submitting ? 'Membuat...' : 'Buat Assignment'}
-                          </button>
+                          type="submit"
+                          disabled={submitting}
+                          onClick={() => debugFormState()} // Debug sebelum submit
+                          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {submitting ? 'Membuat...' : 'Buat Assignment'}
+                        </button>
                       </div>
                     </form>
                   </div>
@@ -1103,12 +1057,22 @@ const debugFormState = () => {
                           <div className="space-y-1">
                             {assignment.employee_assignments && assignment.employee_assignments.length > 0 ? (
                               assignment.employee_assignments.map((ea, index) => (
-                                <div key={index} className="flex items-center text-xs">
-                                  <UserCheck className="w-3 h-3 mr-1 text-green-500" />
-                                  {ea.employee ? ea.employee.username : 'Unknown Employee'}
-                                  <span className="ml-2 text-gray-500">
-                                    ({ea.completed_count || 0}/{ea.total_count || 0})
-                                  </span>
+                                <div key={index} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded">
+                                  <div className="flex items-center">
+                                    <UserCheck className="w-3 h-3 mr-1 text-green-500" />
+                                    {ea.employee ? ea.employee.username : 'Unknown Employee'}
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-blue-600 font-medium">
+                                      {ea.data_count || 0} data
+                                    </div>
+                                    <div className="text-gray-500">
+                                      Index: {ea.start_index || 0}-{ea.end_index || 0}
+                                    </div>
+                                    <div className="text-gray-500">
+                                      Selesai: {ea.completed_count || 0}/{ea.data_count || 0}
+                                    </div>
+                                  </div>
                                 </div>
                               ))
                             ) : (
@@ -1123,14 +1087,13 @@ const debugFormState = () => {
                           <select
                             value={assignment.status || 'draft'}
                             onChange={(e) => updateAssignmentStatus(assignment.id, e.target.value)}
-                            className={`text-xs px-2 py-1 rounded border-0 font-medium focus:ring-2 focus:ring-blue-500 ${
-                              assignment.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                              assignment.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                              assignment.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-                              assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              assignment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}
+                            className={`text-xs px-2 py-1 rounded border-0 font-medium focus:ring-2 focus:ring-blue-500 ${assignment.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                                assignment.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                                  assignment.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                                    assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                      assignment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                        'bg-gray-100 text-gray-800'
+                              }`}
                           >
                             <option value="draft">Draft</option>
                             <option value="sent">Sent</option>

@@ -1,17 +1,16 @@
-# models.py
+# backend/api/models.py - PERBAIKAN MODEL
+
 from django.db import models
 from django.contrib.auth.models import User
 import json
-
 
 class DataTable(models.Model):
     name = models.CharField(max_length=255)
     original_filename = models.CharField(max_length=255)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True) 
     row_count = models.IntegerField(default=0)
     column_names = models.JSONField(default=list)
-    
     def __str__(self):
         return f"table_{self.name}"
 
@@ -56,6 +55,8 @@ class LabelingData(models.Model):
     reference_table = models.CharField(max_length=255)
     confirmed_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    assignment = models.ForeignKey('Assignment', on_delete=models.CASCADE, null=True, blank=True)
+
     
     class Meta:
         db_table = 'table_labeling'
@@ -81,24 +82,40 @@ class MatchingJob(models.Model):
 class Assignment(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
-    # Menggunakan DataTable sebagai dataset untuk assignment
     dataset = models.ForeignKey(DataTable, on_delete=models.CASCADE)
     status = models.CharField(
         max_length=20,
-        choices=[('draft', 'Draft'), ('sent', 'Sent'), ('in_progress', 'In Progress'), ('completed', 'Completed'), ('cancelled', 'Cancelled')],
+        choices=[
+            ('draft', 'Draft'), 
+            ('sent', 'Sent'), 
+            ('in_progress', 'In Progress'), 
+            ('completed', 'Completed'), 
+            ('cancelled', 'Cancelled')
+        ],
         default='draft'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def _str_(self):
+    def __str__(self):
         return self.title
 
 class EmployeeAssignment(models.Model):
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
-    # Menghubungkan ke model User bawaan Django sebagai employee
+    assignment = models.ForeignKey(
+        Assignment, 
+        on_delete=models.CASCADE, 
+        related_name='employee_assignments'  # Konsisten dengan serializer
+    )
     employee = models.ForeignKey(User, on_delete=models.CASCADE)
     assigned_at = models.DateTimeField(auto_now_add=True)
+    
+    # Field untuk distribusi data
+    start_index = models.IntegerField(default=0)
+    end_index = models.IntegerField(default=0)
+    data_count = models.IntegerField(default=0)
 
     class Meta:
-        unique_together = ('assignment', 'employee') # Memastikan satu employee hanya ditugaskan sekali per assignment
+        unique_together = ('assignment', 'employee')
+    
+    def __str__(self):
+        return f"{self.assignment.title} - {self.employee.username}"

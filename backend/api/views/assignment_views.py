@@ -1,5 +1,6 @@
-# backend/api/assignment_views.py
-from rest_framework import generics, status
+# backend/api/views/assignment_views.py - PERBAIKAN LENGKAP
+
+from rest_framework import generics, status, serializers  # Tambahkan import serializers
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 
@@ -27,13 +28,37 @@ class AssignmentListCreateView(generics.ListCreateAPIView):
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
+        print("=== Assignment Creation Debug ===")
+        print("Request data:", request.data)
+        print("Request user:", request.user)
+        print("User groups:", [group.name for group in request.user.groups.all()])
+        
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        created_assignment = Assignment.objects.get(id=serializer.data['id'])
-        response_serializer = AssignmentSerializer(created_assignment)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        
+        try:
+            serializer.is_valid(raise_exception=True)
+            print("Serializer validation passed")
+            
+            self.perform_create(serializer)
+            print("Assignment created successfully")
+            
+            headers = self.get_success_headers(serializer.data)
+            created_assignment = Assignment.objects.get(id=serializer.data['id'])
+            response_serializer = AssignmentSerializer(created_assignment)
+            
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            
+        except serializers.ValidationError as e:  # Sekarang serializers sudah diimport
+            print("Validation error:", e.detail)
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print("Unexpected error:", str(e))
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': f'Internal server error: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class AssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -91,8 +116,7 @@ class EmployeeAssignmentListView(generics.ListAPIView):
         except Assignment.DoesNotExist:
             return EmployeeAssignment.objects.none()
 
-# Anda mungkin juga memerlukan endpoint untuk mengambil daftar employee
 class EmployeeListView(generics.ListAPIView):
-    queryset = User.objects.filter(groups__name='Employee') # Asumsikan employee masuk dalam grup 'Employee'
+    queryset = User.objects.filter(groups__name='employee')
     serializer_class = EmployeeSerializer
     permission_classes = [IsAdminUser]
