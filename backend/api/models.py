@@ -82,7 +82,7 @@ class MatchingJob(models.Model):
 class Assignment(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
-    dataset = models.ForeignKey(DataTable, on_delete=models.CASCADE)
+    dataset = models.ForeignKey('DataTable', on_delete=models.CASCADE)  # Assuming DataTable model exists
     status = models.CharField(
         max_length=20,
         choices=[
@@ -96,15 +96,23 @@ class Assignment(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    
     def __str__(self):
         return self.title
+    
+    def can_change_status_to_sent(self):
+        """Cek apakah assignment bisa diubah ke status 'sent'"""
+        return self.status == 'draft' and self.employee_assignments.exists()
+    
+    class Meta:
+        db_table = 'api_assignment'
+
 
 class EmployeeAssignment(models.Model):
     assignment = models.ForeignKey(
         Assignment, 
         on_delete=models.CASCADE, 
-        related_name='employee_assignments'  # Konsisten dengan serializer
+        related_name='employee_assignments'
     )
     employee = models.ForeignKey(User, on_delete=models.CASCADE)
     assigned_at = models.DateTimeField(auto_now_add=True)
@@ -113,9 +121,27 @@ class EmployeeAssignment(models.Model):
     start_index = models.IntegerField(default=0)
     end_index = models.IntegerField(default=0)
     data_count = models.IntegerField(default=0)
-
+    
+    # NEW: Field untuk tracking progress (sistem otomatis)
+    completed_count = models.IntegerField(default=0, help_text="Jumlah data yang sudah dikerjakan")
+    is_started = models.BooleanField(default=False, help_text="Apakah employee sudah mulai mengerjakan")
+    completed_at = models.DateTimeField(null=True, blank=True, help_text="Kapan employee selesai mengerjakan")
+    
     class Meta:
         unique_together = ('assignment', 'employee')
+        db_table = 'api_employeeassignment'
     
     def __str__(self):
         return f"{self.assignment.title} - {self.employee.username}"
+    
+    def is_completed(self):
+        """Cek apakah employee sudah selesai mengerjakan tugasnya"""
+        return self.completed_count >= self.data_count or self.completed_at is not None
+    
+    def progress_percentage(self):
+        """Hitung persentase progress"""
+        if self.data_count <= 0:
+            return 0
+        return round((self.completed_count / self.data_count) * 100, 2)
+
+
