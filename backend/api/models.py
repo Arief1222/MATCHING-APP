@@ -78,3 +78,27 @@ class MatchingJob(models.Model):
     def __str__(self):
         return f"{self.job_id} - {self.status}"
 
+class Assignment(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    # Menggunakan DataTable sebagai dataset untuk assignment
+    dataset = models.ForeignKey(DataTable, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=20,
+        choices=[('draft', 'Draft'), ('sent', 'Sent'), ('in_progress', 'In Progress'), ('completed', 'Completed'), ('cancelled', 'Cancelled')],
+        default='draft'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def _str_(self):
+        return self.title
+
+class EmployeeAssignment(models.Model):
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
+    # Menghubungkan ke model User bawaan Django sebagai employee
+    employee = models.ForeignKey(User, on_delete=models.CASCADE)
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('assignment', 'employee') # Memastikan satu employee hanya ditugaskan sekali per assignment

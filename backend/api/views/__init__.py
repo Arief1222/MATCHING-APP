@@ -4,3 +4,4 @@ from .matching_result_views import *
 from .matching_export_views import *
 from .user_views import *
 from .file_views import *
+from .assignment_views import *

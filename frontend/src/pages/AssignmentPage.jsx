@@ -13,205 +13,627 @@ import {
   UserX,
   ClipboardList,
   Eye,
-  Save
+  Save,
+  Database
 } from 'lucide-react';
 
 const AssignmentPage = () => {
-  // State untuk Employee Management
-  const [employees, setEmployees] = useState([]);
-  const [showAddEmployeeForm, setShowAddEmployeeForm] = useState(false);
-  const [newEmployee, setNewEmployee] = useState({
+  // State untuk Users Management
+  const [users, setUsers] = useState([]);
+  const [showAddUserForm, setShowAddUserForm] = useState(false);
+  const [newUser, setNewUser] = useState({
     username: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    fullName: ''
+    role: 'employee'
   });
 
-  // State untuk Data Assignment
-  const [unassignedData, setUnassignedData] = useState([]);
-  const [assignedData, setAssignedData] = useState([]);
-  const [selectedData, setSelectedData] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState('');
+  // State untuk Assignment Management
+  const [assignments, setAssignments] = useState([]);
+  const [dataTables, setDataTables] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [showCreateAssignmentForm, setShowCreateAssignmentForm] = useState(false);
+  const [newAssignment, setNewAssignment] = useState({
+    title: '',
+    description: '',
+    dataset: '',
+    employees: []
+  });
 
   // State untuk UI
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
-  const [activeTab, setActiveTab] = useState('employees');
+  const [messageType, setMessageType] = useState('info'); // success, error, info
+  const [activeTab, setActiveTab] = useState('users');
 
-  // Dummy data untuk demo
+  // Auth token helper
+  const getAuthToken = () => {
+    const token = localStorage.getItem('token');
+    console.log('Current token:', token ? 'Token exists' : 'No token found'); // Debug log
+    return token;
+  };
+
+  // Dynamic API headers
+  const getApiHeaders = () => {
+    const token = getAuthToken();
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Token ${token}`;
+    }
+    
+    console.log('API Headers:', headers); // Debug log
+    return headers;
+  };
+
+  // Show message helper
+  const showMessage = (text, type = 'info') => {
+    setMessage(text);
+    setMessageType(type);
+    setTimeout(() => setMessage(''), 5000);
+  };
+
+  // Load data dari API
   useEffect(() => {
-    loadDummyData();
+    loadAllData();
   }, []);
 
-  const loadDummyData = () => {
-    // Dummy employees
-    const dummyEmployees = [
-      {
-        id: 1,
-        username: 'employee1',
-        email: 'employee1@example.com',
-        fullName: 'John Doe',
-        isActive: true,
-        role: 'employee',
-        createdAt: '2024-01-15T10:00:00Z'
-      },
-      {
-        id: 2,
-        username: 'employee2',
-        email: 'employee2@example.com',
-        fullName: 'Jane Smith',
-        isActive: true,
-        role: 'employee',
-        createdAt: '2024-01-20T14:30:00Z'
-      }
-    ];
-
-    // Dummy unassigned data
-    const dummyUnassignedData = [
-      {
-        id: 101,
-        dataId: 'DATA_001',
-        combinedString1: 'PT INDOFOOD SUKSES MAKMUR TBK',
-        combinedString2: 'PT. Indofood Sukses Makmur Tbk.',
-        sourceTable: 'company_data_a',
-        referenceTable: 'company_data_b',
-        createdAt: '2024-01-25T09:15:00Z'
-      },
-      {
-        id: 102,
-        dataId: 'DATA_002',
-        combinedString1: 'BANK CENTRAL ASIA TBK',
-        combinedString2: 'Bank Central Asia Tbk',
-        sourceTable: 'bank_data_a',
-        referenceTable: 'bank_data_b',
-        createdAt: '2024-01-25T10:20:00Z'
-      }
-    ];
-
-    // Dummy assigned data
-    const dummyAssignedData = [
-      {
-        id: 201,
-        dataId: 'DATA_003',
-        combinedString1: 'TELKOM INDONESIA PERSERO TBK',
-        combinedString2: 'PT Telkomsel Indonesia',
-        sourceTable: 'telco_data_a',
-        referenceTable: 'telco_data_b',
-        assignedTo: 'employee1',
-        assignedToName: 'John Doe',
-        assignedAt: '2024-01-24T16:45:00Z',
-        status: 'pending'
-      }
-    ];
-
-    setEmployees(dummyEmployees);
-    setUnassignedData(dummyUnassignedData);
-    setAssignedData(dummyAssignedData);
-    setLoading(false);
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      // Load data secara terpisah untuk menghindari error propagation
+      await Promise.all([
+        loadUsers(),
+        loadAssignments(),
+        loadDataTables(),
+        loadEmployees()
+      ]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      showMessage('Some data failed to load. Please check your connection.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Employee Management Functions
-  const handleAddEmployee = async (e) => {
+  // Load Users
+  const loadUsers = async () => {
+    try {
+      console.log('Loading users...'); // Debug log
+      const response = await fetch('http://127.0.0.1:8001/users/', {
+        headers: getApiHeaders()
+      });
+      
+      console.log('Users response status:', response.status); // Debug log
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Users response data:', data); // Debug log
+        
+        // Handle different response formats
+        let usersArray = [];
+        if (Array.isArray(data)) {
+          usersArray = data;
+        } else if (data.users && Array.isArray(data.users)) {
+          usersArray = data.users;
+        } else if (data.data && Array.isArray(data.data)) {
+          usersArray = data.data;
+        } else if (data.results && Array.isArray(data.results)) {
+          usersArray = data.results;
+        }
+        
+        console.log('Setting users:', usersArray); // Debug log
+        setUsers(usersArray);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to load users:', errorText);
+        setUsers([]);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+      // Set empty array as fallback
+      setUsers([]);
+    }
+  };
+
+  // Load Assignments
+  const loadAssignments = async () => {
+    try {
+      console.log('Loading assignments...'); // Debug log
+      const response = await fetch('http://127.0.0.1:8001/assignments/', {
+        headers: getApiHeaders()
+      });
+      
+      console.log('Assignments response status:', response.status); // Debug log
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Assignments response data:', data); // Debug log
+        
+        // Pastikan assignments adalah array dan setiap assignment memiliki employee_assignments
+        const processedAssignments = Array.isArray(data) ? data.map(assignment => ({
+          ...assignment,
+          employee_assignments: Array.isArray(assignment.employee_assignments) ? assignment.employee_assignments : []
+        })) : [];
+        setAssignments(processedAssignments);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to load assignments:', errorText);
+        setAssignments([]);
+      }
+    } catch (error) {
+      console.error('Error loading assignments:', error);
+      // Set empty array as fallback
+      setAssignments([]);
+    }
+  };
+
+ // 3. PERBAIKAN: Enhanced loadDataTables function
+const loadDataTables = async () => {
+  try {
+    console.log('=== Loading Data Tables ===');
+    const response = await fetch('http://127.0.0.1:8001/tables/', {
+      headers: getApiHeaders()
+    });
+    
+    console.log('Tables response status:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Raw tables response:', data);
+      
+      // PERBAIKAN: More robust response handling
+      let tablesArray = [];
+      if (Array.isArray(data)) {
+        tablesArray = data;
+      } else if (data.tables && Array.isArray(data.tables)) {
+        tablesArray = data.tables;
+      } else if (data.data && Array.isArray(data.data)) {
+        tablesArray = data.data;
+      } else if (data.results && Array.isArray(data.results)) {
+        tablesArray = data.results;
+      }
+      
+      // PERBAIKAN: Consistent table processing
+      const processedTables = tablesArray.map((table, index) => {
+        const processedTable = {
+          ...table,
+          // Pastikan ada name yang valid
+          name: table.name || `table_${index}`,
+          records: table.records || table.row_count || 0,
+          row_count: table.row_count || table.records || 0,
+          // Tambahkan display_name untuk UI
+          display_name: table.name ? `${table.name} (${table.records || table.row_count || 0} rows)` : `Table ${index + 1}`
+        };
+        
+        console.log(`Processed table ${index}:`, processedTable);
+        return processedTable;
+      });
+      
+      console.log('Final processed tables:', processedTables);
+      setDataTables(processedTables);
+    } else {
+      const errorText = await response.text();
+      console.error('Failed to load data tables:', errorText);
+      setDataTables([]);
+      showMessage('Gagal memuat data tables: ' + errorText, 'error');
+    }
+  } catch (error) {
+    console.error('Error loading data tables:', error);
+    setDataTables([]);
+    showMessage('Error loading data tables: ' + error.message, 'error');
+  }
+};
+
+  // Load Employees - FIXED TO USE DEDICATED ENDPOINT
+  const loadEmployees = async () => {
+    try {
+      console.log('Loading employees...'); // Debug log
+      const response = await fetch('http://127.0.0.1:8001/employees/', {
+        headers: getApiHeaders()
+      });
+      
+      console.log('Employees response status:', response.status); // Debug log
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Employees response data:', data); // Debug log
+        
+        // Handle response format
+        let employeesArray = [];
+        if (Array.isArray(data)) {
+          employeesArray = data;
+        } else if (data.employees && Array.isArray(data.employees)) {
+          employeesArray = data.employees;
+        }
+        
+        console.log('Setting employees:', employeesArray); // Debug log
+        setEmployees(employeesArray);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to load employees:', errorText);
+        setEmployees([]);
+      }
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      // Set empty array as fallback
+      setEmployees([]);
+    }
+  };
+
+  // User Management Functions
+  const handleAddUser = async (e) => {
     e.preventDefault();
     
-    if (newEmployee.password !== newEmployee.confirmPassword) {
-      setMessage('Password dan konfirmasi password tidak cocok');
+    // Validasi input
+    if (!newUser.username || !newUser.email || !newUser.password) {
+      showMessage('Semua field wajib diisi', 'error');
+      return;
+    }
+
+    // Validasi email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUser.email)) {
+      showMessage('Format email tidak valid', 'error');
+      return;
+    }
+
+    // Validasi password length
+    if (newUser.password.length < 6) {
+      showMessage('Password minimal 6 karakter', 'error');
       return;
     }
 
     setSubmitting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const newEmp = {
-        id: employees.length + 1,
-        username: newEmployee.username,
-        email: newEmployee.email,
-        fullName: newEmployee.fullName,
-        isActive: true,
-        role: 'employee',
-        createdAt: new Date().toISOString()
+      // Prepare payload dengan struktur yang benar
+      const payload = {
+        username: newUser.username.trim(),
+        email: newUser.email.trim().toLowerCase(),
+        password: newUser.password,
+        role: newUser.role
       };
 
-      setEmployees([...employees, newEmp]);
-      setNewEmployee({ username: '', email: '', password: '', confirmPassword: '', fullName: '' });
-      setShowAddEmployeeForm(false);
-      setMessage('Employee berhasil ditambahkan');
+      console.log('Sending payload:', payload); // Debug log
+
+      const response = await fetch('http://127.0.0.1:8001/users/', {
+        method: 'POST',
+        headers: getApiHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      console.log('Response status:', response.status); // Debug log
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Success response:', result); // Debug log
+        showMessage('User berhasil ditambahkan', 'success');
+        
+        // Reset form
+        setNewUser({ username: '', email: '', password: '', role: 'employee' });
+        setShowAddUserForm(false);
+        
+        // Force reload users and employees with a small delay to ensure backend has processed
+        setTimeout(async () => {
+          console.log('Reloading users and employees after successful creation...'); // Debug log
+          await Promise.all([loadUsers(), loadEmployees()]);
+        }, 500);
+      } else {
+        let errorMessage = 'Error menambahkan user';
+        try {
+          const errorData = await response.json();
+          console.error('Error response:', errorData); // Debug log
+          
+          // Handle different error formats
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (typeof errorData === 'object') {
+            // Handle field-specific errors
+            const fieldErrors = [];
+            Object.keys(errorData).forEach(field => {
+              if (Array.isArray(errorData[field])) {
+                fieldErrors.push(`${field}: ${errorData[field].join(', ')}`);
+              } else {
+                fieldErrors.push(`${field}: ${errorData[field]}`);
+              }
+            });
+            if (fieldErrors.length > 0) {
+              errorMessage = fieldErrors.join('; ');
+            }
+          }
+        } catch (jsonError) {
+          const errorText = await response.text();
+          console.error('Server response text:', errorText);
+          errorMessage = `Server error: ${response.status} - ${errorText}`;
+        }
+        showMessage(errorMessage, 'error');
+      }
     } catch (error) {
-      setMessage('Error menambahkan employee: ' + error.message);
+      console.error('Network error:', error);
+      showMessage('Network error: ' + error.message, 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const toggleEmployeeStatus = async (employeeId) => {
-    setEmployees(employees.map(emp => 
-      emp.id === employeeId ? { ...emp, isActive: !emp.isActive } : emp
-    ));
-    setMessage('Status employee berhasil diupdate');
-  };
-
-  // Data Assignment Functions
-  const handleDataSelection = (dataId) => {
-    setSelectedData(prev => 
-      prev.includes(dataId) 
-        ? prev.filter(id => id !== dataId)
-        : [...prev, dataId]
-    );
-  };
-
-  const handleAssignData = async () => {
-    if (selectedData.length === 0) {
-      setMessage('Pilih data yang akan ditugaskan');
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus user ini?')) {
       return;
     }
-
-    if (!selectedEmployee) {
-      setMessage('Pilih employee untuk ditugaskan');
-      return;
-    }
-
-    setSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('http://127.0.0.1:8001/users/', {
+        method: 'DELETE',
+        headers: getApiHeaders(),
+        body: JSON.stringify({ id: userId })
+      });
 
-      const employee = employees.find(emp => emp.username === selectedEmployee);
-      const dataToAssign = unassignedData.filter(data => selectedData.includes(data.id));
-
-      const newAssignedData = dataToAssign.map(data => ({
-        ...data,
-        assignedTo: employee.username,
-        assignedToName: employee.fullName,
-        assignedAt: new Date().toISOString(),
-        status: 'pending'
-      }));
-
-      setAssignedData([...assignedData, ...newAssignedData]);
-      setUnassignedData(unassignedData.filter(data => !selectedData.includes(data.id)));
-      setSelectedData([]);
-      setSelectedEmployee('');
-      setMessage(`${dataToAssign.length} data berhasil ditugaskan ke ${employee.fullName}`);
+      if (response.ok) {
+        showMessage('User berhasil dihapus', 'success');
+        await Promise.all([loadUsers(), loadEmployees()]);
+      } else {
+        let errorMessage = 'Error menghapus user';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch (jsonError) {
+          const errorText = await response.text();
+          console.error('Server response:', errorText);
+          errorMessage = `Server error: ${response.status}`;
+        }
+        showMessage(errorMessage, 'error');
+      }
     } catch (error) {
-      setMessage('Error menugaskan data: ' + error.message);
-    } finally {
-      setSubmitting(false);
+      console.error('Network error:', error);
+      showMessage('Network error: ' + error.message, 'error');
     }
   };
 
-  const selectAllData = () => {
-    if (selectedData.length === unassignedData.length) {
-      setSelectedData([]);
+// Frontend - AssignmentPage.jsx - handleCreateAssignment function yang diperbaiki
+
+// 1. PERBAIKAN: Simplifikasi logika dataset selection
+const handleCreateAssignment = async (e) => {
+  e.preventDefault();
+  
+  console.log('=== Assignment Form Submission ===');
+  console.log('Form data:', newAssignment);
+  console.log('Available dataTables:', dataTables);
+  console.log('Available employees:', employees);
+  
+  // Validasi form
+  if (!newAssignment.title.trim()) {
+    showMessage('Judul assignment harus diisi', 'error');
+    return;
+  }
+  
+  if (!newAssignment.dataset) {
+    showMessage('Dataset harus dipilih', 'error');
+    return;
+  }
+  
+  if (!newAssignment.employees || newAssignment.employees.length === 0) {
+    showMessage('Minimal 1 employee harus dipilih', 'error');
+    return;
+  }
+
+  setSubmitting(true);
+  
+  try {
+    // PERBAIKAN: Gunakan dataset value langsung tanpa pencarian kompleks
+    const payload = {
+      title: newAssignment.title.trim(),
+      description: newAssignment.description.trim() || "",
+      dataset: newAssignment.dataset, // Langsung gunakan value yang dipilih
+      employees: newAssignment.employees.map(id => parseInt(id))
+    };
+    
+    console.log('=== Sending Payload ===');
+    console.log('Payload:', payload);
+    console.log('API Headers:', getApiHeaders());
+    
+    const response = await fetch('http://127.0.0.1:8001/assignments/', {
+      method: 'POST',
+      headers: getApiHeaders(),
+      body: JSON.stringify(payload)
+    });
+    
+    console.log('=== API Response ===');
+    console.log('Status:', response.status);
+    console.log('Status Text:', response.statusText);
+    
+    if (response.ok) {
+      try {
+        const result = await response.json();
+        console.log('Success result:', result);
+        
+        showMessage(`Assignment "${newAssignment.title}" berhasil dibuat!`, 'success');
+        
+        // Reset form
+        setNewAssignment({
+          title: '',
+          description: '',
+          dataset: '',
+          employees: []
+        });
+        setShowCreateAssignmentForm(false);
+        
+        // Reload assignments
+        setTimeout(() => {
+          loadAssignments();
+        }, 500);
+        
+      } catch (jsonError) {
+        console.error('Error parsing success response:', jsonError);
+        // Meskipun ada error parsing, assignment mungkin sudah berhasil dibuat
+        showMessage('Assignment berhasil dibuat!', 'success');
+        setShowCreateAssignmentForm(false);
+        setNewAssignment({
+          title: '',
+          description: '',
+          dataset: '',
+          employees: []
+        });
+        loadAssignments();
+      }
     } else {
-      setSelectedData(unassignedData.map(data => data.id));
+      // PERBAIKAN: Enhanced error handling
+      let errorMessage = `Error ${response.status}: Failed to create assignment`;
+      
+      try {
+        const errorData = await response.json();
+        console.log('Error response data:', errorData);
+        
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (typeof errorData === 'object') {
+          // Handle field-specific errors
+          const fieldErrors = [];
+          Object.keys(errorData).forEach(field => {
+            const fieldError = Array.isArray(errorData[field]) ? 
+              errorData[field].join(', ') : errorData[field];
+            fieldErrors.push(`${field}: ${fieldError}`);
+          });
+          if (fieldErrors.length > 0) {
+            errorMessage = fieldErrors.join('; ');
+          }
+        }
+        
+      } catch (jsonError) {
+        console.error('Error parsing error response:', jsonError);
+        const errorText = await response.text();
+        console.log('Error response text:', errorText);
+        errorMessage = `Server error ${response.status}: ${errorText.substring(0, 200)}`;
+      }
+      
+      showMessage(errorMessage, 'error');
+    }
+    
+  } catch (networkError) {
+    console.error('=== Network Error ===');
+    console.error('Network error:', networkError);
+    console.error('Error stack:', networkError.stack);
+    
+    // PERBAIKAN: Detailed network error logging
+    console.error('Request details:', {
+      url: 'http://127.0.0.1:8001/assignments/',
+      method: 'POST',
+      headers: getApiHeaders(),
+      payload: {
+        title: newAssignment.title.trim(),
+        description: newAssignment.description.trim() || "",
+        dataset: newAssignment.dataset,
+        employees: newAssignment.employees.map(id => parseInt(id))
+      }
+    });
+    
+    showMessage(`Network error: ${networkError.message}`, 'error');
+  } finally {
+    setSubmitting(false);
+  }
+};
+
+// 4. PERBAIKAN: Enhanced employee selection with validation
+const handleEmployeeSelection = (employeeId) => {
+  console.log('Employee selection:', employeeId, typeof employeeId);
+  
+  // PERBAIKAN: Ensure employeeId is number
+  const numericEmployeeId = typeof employeeId === 'string' ? parseInt(employeeId) : employeeId;
+  
+  setNewAssignment(prev => ({
+    ...prev,
+    employees: prev.employees.includes(numericEmployeeId)
+      ? prev.employees.filter(id => id !== numericEmployeeId)
+      : [...prev.employees, numericEmployeeId]
+  }));
+  
+  console.log('Updated employees:', newAssignment.employees);
+};
+
+  const updateAssignmentStatus = async (assignmentId, newStatus) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8001/assignments/${assignmentId}/status/`, {
+        method: 'PATCH',
+        headers: getApiHeaders(),
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        showMessage('Status assignment berhasil diupdate', 'success');
+        await loadAssignments();
+      } else {
+        let errorMessage = 'Error updating status';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch (jsonError) {
+          const errorText = await response.text();
+          console.error('Server response:', errorText);
+          errorMessage = `Server error: ${response.status}`;
+        }
+        showMessage(errorMessage, 'error');
+      }
+    } catch (error) {
+      console.error('Network error:', error);
+      showMessage('Network error: ' + error.message, 'error');
     }
   };
 
+  const validateAssignmentForm = () => {
+  const errors = [];
+  
+  if (!newAssignment.title.trim()) {
+    errors.push('Judul assignment harus diisi');
+  }
+  
+  if (!newAssignment.dataset) {
+    errors.push('Dataset harus dipilih');
+  }
+  
+  if (!newAssignment.employees || newAssignment.employees.length === 0) {
+    errors.push('Minimal 1 employee harus dipilih');
+  }
+  
+  // Validate dataset exists in available tables
+  if (newAssignment.dataset && !dataTables.find(table => table.name === newAssignment.dataset)) {
+    errors.push('Dataset yang dipilih tidak valid');
+  }
+  
+  // Validate employees exist
+  if (newAssignment.employees) {
+    const invalidEmployees = newAssignment.employees.filter(empId => 
+      !employees.find(emp => emp.id === empId)
+    );
+    if (invalidEmployees.length > 0) {
+      errors.push(`Employee dengan ID ${invalidEmployees.join(', ')} tidak valid`);
+    }
+  }
+  
+  return errors;
+};
+
+// 6. PERBAIKAN: Enhanced debugging helper
+const debugFormState = () => {
+  console.log('=== DEBUG FORM STATE ===');
+  console.log('newAssignment:', newAssignment);
+  console.log('dataTables count:', dataTables.length);
+  console.log('employees count:', employees.length);
+  console.log('Selected dataset:', newAssignment.dataset);
+  console.log('Selected employees:', newAssignment.employees);
+  console.log('Available datasets:', dataTables.map(t => ({ name: t.name, records: t.records })));
+  console.log('Available employees:', employees.map(e => ({ id: e.id, username: e.username })));
+};
+
+  // Render loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -227,15 +649,31 @@ const AssignmentPage = () => {
         {/* Header */}
         <div className="p-6 border-b">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Assignment Management</h1>
-          <p className="text-gray-600">Kelola akun Employee dan distribusi tugas pelabelan data</p>
+          <p className="text-gray-600">Kelola user dan distribusi tugas pelabelan data</p>
 
           {message && (
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center">
-              <AlertCircle className="w-5 h-5 text-blue-600 mr-2" />
-              <span className="text-blue-800">{message}</span>
+            <div className={`mt-4 p-4 border rounded-lg flex items-center ${
+              messageType === 'success' ? 'bg-green-50 border-green-200' :
+              messageType === 'error' ? 'bg-red-50 border-red-200' :
+              'bg-blue-50 border-blue-200'
+            }`}>
+              <AlertCircle className={`w-5 h-5 mr-2 ${
+                messageType === 'success' ? 'text-green-600' :
+                messageType === 'error' ? 'text-red-600' :
+                'text-blue-600'
+              }`} />
+              <span className={
+                messageType === 'success' ? 'text-green-800' :
+                messageType === 'error' ? 'text-red-800' :
+                'text-blue-800'
+              }>{message}</span>
               <button 
                 onClick={() => setMessage('')}
-                className="ml-auto text-blue-600 hover:text-blue-800"
+                className={`ml-auto ${
+                  messageType === 'success' ? 'text-green-600 hover:text-green-800' :
+                  messageType === 'error' ? 'text-red-600 hover:text-red-800' :
+                  'text-blue-600 hover:text-blue-800'
+                }`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -247,52 +685,66 @@ const AssignmentPage = () => {
         <div className="border-b">
           <nav className="flex space-x-8 px-6">
             <button
-              onClick={() => setActiveTab('employees')}
+              onClick={() => setActiveTab('users')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'employees'
+                activeTab === 'users'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
               <Users className="w-4 h-4 inline mr-2" />
-              Manajemen Employee
+              Manajemen User ({Array.isArray(users) ? users.length : 0})
             </button>
             <button
-              onClick={() => setActiveTab('assignment')}
+              onClick={() => setActiveTab('assignments')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'assignment'
+                activeTab === 'assignments'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
               <ClipboardList className="w-4 h-4 inline mr-2" />
-              Distribusi Tugas
+              Assignment ({assignments.length})
             </button>
           </nav>
         </div>
 
         {/* Tab Content */}
         <div className="p-6">
-          {activeTab === 'employees' && (
+          {activeTab === 'users' && (
             <div>
-              {/* Employee Management Header */}
+              {/* User Management Header */}
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold text-gray-800">Daftar Employee</h2>
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-lg font-semibold text-gray-800">Daftar User</h2>
+                  <span className="text-sm text-gray-500">({users.length} users loaded)</span>
+                  <button
+                    onClick={() => {
+                      console.log('Manual refresh clicked');
+                      loadUsers();
+                    }}
+                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center text-sm"
+                    title="Refresh data"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-1" />
+                    Refresh
+                  </button>
+                </div>
                 <button
-                  onClick={() => setShowAddEmployeeForm(true)}
+                  onClick={() => setShowAddUserForm(true)}
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center text-sm"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Tambah Employee
+                  Tambah User
                 </button>
               </div>
 
-              {/* Add Employee Form Modal */}
-              {showAddEmployeeForm && (
+              {/* Add User Form Modal */}
+              {showAddUserForm && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                   <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                    <h3 className="text-lg font-semibold mb-4">Tambah Employee Baru</h3>
-                    <div onSubmit={handleAddEmployee}>
+                    <h3 className="text-lg font-semibold mb-4">Tambah User Baru</h3>
+                    <form onSubmit={handleAddUser}>
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -301,8 +753,8 @@ const AssignmentPage = () => {
                           <input
                             type="text"
                             required
-                            value={newEmployee.username}
-                            onChange={(e) => setNewEmployee({...newEmployee, username: e.target.value})}
+                            value={newUser.username}
+                            onChange={(e) => setNewUser({...newUser, username: e.target.value})}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -313,8 +765,8 @@ const AssignmentPage = () => {
                           <input
                             type="email"
                             required
-                            value={newEmployee.email}
-                            onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
+                            value={newUser.email}
+                            onChange={(e) => setNewUser({...newUser, email: e.target.value})}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -325,62 +777,54 @@ const AssignmentPage = () => {
                           <input
                             type="password"
                             required
-                            value={newEmployee.password}
-                            onChange={(e) => setNewEmployee({...newEmployee, password: e.target.value})}
+                            value={newUser.password}
+                            onChange={(e) => setNewUser({...newUser, password: e.target.value})}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Konfirmasi Password *
+                            Role *
                           </label>
-                          <input
-                            type="password"
-                            required
-                            value={newEmployee.confirmPassword}
-                            onChange={(e) => setNewEmployee({...newEmployee, confirmPassword: e.target.value})}
+                          <select
+                            value={newUser.role}
+                            onChange={(e) => setNewUser({...newUser, role: e.target.value})}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Nama Lengkap
-                          </label>
-                          <input
-                            type="text"
-                            value={newEmployee.fullName}
-                            onChange={(e) => setNewEmployee({...newEmployee, fullName: e.target.value})}
-                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
+                          >
+                            <option value="employee">Employee</option>
+                            <option value="superadmin">Superadmin</option>
+                          </select>
                         </div>
                       </div>
                       <div className="flex justify-end space-x-3 mt-6">
                         <button
                           type="button"
-                          onClick={() => setShowAddEmployeeForm(false)}
+                          onClick={() => setShowAddUserForm(false)}
                           className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
                         >
                           Batal
                         </button>
                         <button
-                          type="button"
-                          onClick={handleAddEmployee}
+                          type="submit"
                           disabled={submitting}
                           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                         >
                           {submitting ? 'Menyimpan...' : 'Simpan'}
                         </button>
                       </div>
-                    </div>
+                    </form>
                   </div>
                 </div>
               )}
 
-              {/* Employee Table */}
+              {/* Users Table */}
               <div className="overflow-x-auto">
                 <table className="w-full border border-gray-200 rounded-lg">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ID
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Username
                       </th>
@@ -388,16 +832,7 @@ const AssignmentPage = () => {
                         Email
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Nama Lengkap
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Peran
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Dibuat
+                        Roles
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Aksi
@@ -405,52 +840,43 @@ const AssignmentPage = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {employees.map((employee) => (
-                      <tr key={employee.id} className="hover:bg-gray-50">
+                    {users.map((user, index) => (
+                      <tr key={user.id || index} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {employee.username}
+                          {user.id || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {user.username || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {employee.email}
+                          {user.email || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {employee.fullName || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            employee.isActive
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {employee.isActive ? (
-                              <>
-                                <UserCheck className="w-3 h-3 mr-1" />
-                                Aktif
-                              </>
+                          <div className="flex flex-wrap gap-1">
+                            {user.roles && Array.isArray(user.roles) ? (
+                              user.roles.map((role, roleIndex) => (
+                                <span
+                                  key={roleIndex}
+                                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                >
+                                  {role}
+                                </span>
+                              ))
                             ) : (
-                              <>
-                                <UserX className="w-3 h-3 mr-1" />
-                                Tidak Aktif
-                              </>
+                              <span className="text-xs text-gray-500">
+                                {user.role || 'No role'}
+                              </span>
                             )}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
-                          {employee.role}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(employee.createdAt).toLocaleDateString('id-ID')}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button
-                            onClick={() => toggleEmployeeStatus(employee.id)}
-                            className={`px-3 py-1 rounded text-xs ${
-                              employee.isActive
-                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                : 'bg-green-100 text-green-700 hover:bg-green-200'
-                            }`}
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded text-xs"
+                            disabled={!user.id}
                           >
-                            {employee.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                            <Trash2 className="w-3 h-3 inline mr-1" />
+                            Hapus
                           </button>
                         </td>
                       </tr>
@@ -458,215 +884,288 @@ const AssignmentPage = () => {
                   </tbody>
                 </table>
               </div>
+
+              {users.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-4" />
+                  <p>Belum ada user yang terdaftar</p>
+                </div>
+              )}
             </div>
           )}
 
-          {activeTab === 'assignment' && (
+          {activeTab === 'assignments' && (
             <div>
               {/* Assignment Header */}
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Tugas Pelabelan</h2>
-                
-                {/* Assignment Controls */}
-                <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Pilih Employee
-                      </label>
-                      <select
-                        value={selectedEmployee}
-                        onChange={(e) => setSelectedEmployee(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">-- Pilih Employee --</option>
-                        {employees.filter(emp => emp.isActive).map(employee => (
-                          <option key={employee.id} value={employee.username}>
-                            {employee.fullName || employee.username} ({employee.email})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        onClick={handleAssignData}
-                        disabled={selectedData.length === 0 || !selectedEmployee || submitting}
-                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm"
-                      >
-                        <Save className="w-4 h-4 mr-2" />
-                        Tugaskan Data ({selectedData.length})
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Unassigned Data Section */}
-              <div className="mb-8">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-md font-semibold text-gray-800">
-                    Data yang Belum Ditugaskan ({unassignedData.length})
-                  </h3>
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-lg font-semibold text-gray-800">Daftar Assignment</h2>
+                  <span className="text-sm text-gray-500">({assignments.length} assignments)</span>
                   <button
-                    onClick={selectAllData}
-                    className="text-sm text-blue-600 hover:text-blue-800"
+                    onClick={() => {
+                      console.log('Manual refresh assignments clicked');
+                      loadAssignments();
+                    }}
+                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center text-sm"
+                    title="Refresh assignments"
                   >
-                    {selectedData.length === unassignedData.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                    <RefreshCw className="w-4 h-4 mr-1" />
+                    Refresh
                   </button>
                 </div>
+                <button
+                  onClick={() => setShowCreateAssignmentForm(true)}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center text-sm"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Buat Assignment
+                </button>
+              </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full border border-gray-200 rounded-lg">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+              {/* Create Assignment Form Modal */}
+              {showCreateAssignmentForm && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-lg font-semibold mb-4">Buat Assignment Baru</h3>
+                    <form onSubmit={handleCreateAssignment}>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Title *
+                          </label>
                           <input
-                            type="checkbox"
-                            checked={selectedData.length === unassignedData.length && unassignedData.length > 0}
-                            onChange={selectAllData}
-                            className="rounded"
+                            type="text"
+                            required
+                            value={newAssignment.title}
+                            onChange={(e) => setNewAssignment({...newAssignment, title: e.target.value})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Data ID
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Data A
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Data B
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Source Table
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Reference Table
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Dibuat
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {unassignedData.map((data) => (
-                        <tr key={data.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <input
-                              type="checkbox"
-                              checked={selectedData.includes(data.id)}
-                              onChange={() => handleDataSelection(data.id)}
-                              className="rounded"
-                            />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {data.dataId}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                            <span className="truncate block" title={data.combinedString1}>
-                              {data.combinedString1}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                            <span className="truncate block" title={data.combinedString2}>
-                              {data.combinedString2}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {data.sourceTable}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {data.referenceTable}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(data.createdAt).toLocaleDateString('id-ID')}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {unassignedData.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
-                    <p>Semua data sudah ditugaskan</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Description
+                          </label>
+                          <textarea
+                            value={newAssignment.description}
+                            onChange={(e) => setNewAssignment({...newAssignment, description: e.target.value})}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Dataset *
+                          </label>
+                          <select
+                            required
+                            value={newAssignment.dataset}
+                            onChange={(e) => {
+                              console.log('Dataset selected:', e.target.value);
+                              setNewAssignment({...newAssignment, dataset: e.target.value})
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">-- Pilih Dataset --</option>
+                            {dataTables.map((table, index) => {
+                              // PERBAIKAN: Gunakan name sebagai value secara konsisten
+                              const tableId = table.name || `table_${index}`;
+                              const tableName = table.name || `Table ${index + 1}`;
+                              const rowCount = table.records || table.row_count || 0;
+                              
+                              console.log('Table option:', { tableId, tableName, rowCount });
+                              
+                              return (
+                                <option key={tableId} value={tableName}>
+                                  {tableName} ({rowCount} rows)
+                                </option>
+                              );
+                            })}
+                          </select>
+                          {dataTables.length === 0 && (
+                            <p className="text-sm text-red-600 mt-1">
+                              Tidak ada dataset yang tersedia. Upload file dataset terlebih dahulu.
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">
+                            Current selection: {newAssignment.dataset || 'None'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Pilih Employee * ({newAssignment.employees.length} dipilih)
+                          </label>
+                          <div className="max-h-48 overflow-y-auto border border-gray-300 rounded p-2">
+                            {employees.length > 0 ? (
+                              employees.map((employee) => (
+                                <label key={employee.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={newAssignment.employees.includes(employee.id)}
+                                    onChange={() => handleEmployeeSelection(employee.id)}
+                                    className="mr-3 rounded"
+                                  />
+                                  <div>
+                                    <p className="font-medium">{employee.username}</p>
+                                    <p className="text-sm text-gray-500">
+                                      {employee.first_name && employee.last_name ? 
+                                        `${employee.first_name} ${employee.last_name}` : 
+                                        employee.email || 'No additional info'
+                                      }
+                                    </p>
+                                  </div>
+                                </label>
+                              ))
+                            ) : (
+                              <div className="text-center py-4 text-gray-500">
+                                <UserX className="w-8 h-8 mx-auto mb-2" />
+                                <p className="text-sm">Loading employees...</p>
+                              </div>
+                            )}
+                          </div>
+                          {employees.length === 0 && (
+                            <p className="text-sm text-red-600 mt-1">
+                              Tidak ada employee yang tersedia. Tambahkan user dengan role employee terlebih dahulu.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                          type="button"
+                          onClick={() => setShowCreateAssignmentForm(false)}
+                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+                        >
+                          Batal
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            onClick={() => debugFormState()} // Debug sebelum submit
+                            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {submitting ? 'Membuat...' : 'Buat Assignment'}
+                          </button>
+                      </div>
+                    </form>
                   </div>
-                )}
+                </div>
+              )}
+
+              {/* Assignments Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full border border-gray-200 rounded-lg">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Title
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Dataset
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Employees
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Created
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {assignments.map((assignment) => (
+                      <tr key={assignment.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {assignment.id}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          <div>
+                            <p className="font-semibold">{assignment.title}</p>
+                            {assignment.description && (
+                              <p className="text-gray-500 text-sm">{assignment.description}</p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="flex items-center">
+                            <Database className="w-4 h-4 mr-2 text-gray-400" />
+                            {assignment.dataset_name || `Dataset #${assignment.dataset}`}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <div className="space-y-1">
+                            {assignment.employee_assignments && assignment.employee_assignments.length > 0 ? (
+                              assignment.employee_assignments.map((ea, index) => (
+                                <div key={index} className="flex items-center text-xs">
+                                  <UserCheck className="w-3 h-3 mr-1 text-green-500" />
+                                  {ea.employee ? ea.employee.username : 'Unknown Employee'}
+                                  <span className="ml-2 text-gray-500">
+                                    ({ea.completed_count || 0}/{ea.total_count || 0})
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="flex items-center text-xs text-gray-500">
+                                <UserX className="w-3 h-3 mr-1" />
+                                No employees assigned
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <select
+                            value={assignment.status || 'draft'}
+                            onChange={(e) => updateAssignmentStatus(assignment.id, e.target.value)}
+                            className={`text-xs px-2 py-1 rounded border-0 font-medium focus:ring-2 focus:ring-blue-500 ${
+                              assignment.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                              assignment.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                              assignment.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                              assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              assignment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            <option value="draft">Draft</option>
+                            <option value="sent">Sent</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {assignment.created_at ? new Date(assignment.created_at).toLocaleDateString('id-ID') : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => window.open(`/api/assignments/${assignment.id}/progress/`, '_blank')}
+                            className="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded text-xs mr-2"
+                          >
+                            <Eye className="w-3 h-3 inline mr-1" />
+                            Detail
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
-              {/* Assigned Data Section */}
-              <div>
-                <h3 className="text-md font-semibold text-gray-800 mb-4">
-                  Data yang Sudah Ditugaskan ({assignedData.length})
-                </h3>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full border border-gray-200 rounded-lg">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Data ID
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Data A
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Data B
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Ditugaskan ke
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tanggal Tugas
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {assignedData.map((data) => (
-                        <tr key={data.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {data.dataId}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                            <span className="truncate block" title={data.combinedString1}>
-                              {data.combinedString1}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                            <span className="truncate block" title={data.combinedString2}>
-                              {data.combinedString2}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <div>
-                              <p className="font-medium">{data.assignedToName}</p>
-                              <p className="text-gray-500 text-xs">@{data.assignedTo}</p>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              {data.status === 'pending' ? 'Menunggu' : data.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(data.assignedAt).toLocaleDateString('id-ID')}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {assignments.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <ClipboardList className="w-12 h-12 mx-auto mb-4" />
+                  <p>Belum ada assignment yang dibuat</p>
+                  <p className="text-sm mt-2">
+                    Dataset tersedia: {dataTables.length}, Employees tersedia: {employees.length}
+                  </p>
                 </div>
-
-                {assignedData.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <Eye className="w-12 h-12 mx-auto mb-4" />
-                    <p>Belum ada data yang ditugaskan</p>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           )}
         </div>

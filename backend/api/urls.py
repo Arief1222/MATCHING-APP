@@ -21,7 +21,24 @@ from .views import (
     GetMatchingStatsView,
     GetAvailableTablesView,
     handle_table_operations,
-    UserManagementView
+    AssignmentListCreateView,
+    AssignmentDetailView,
+    AssignmentStatusUpdateView,
+    EmployeeAssignmentListView,
+    EmployeeListView,
+    UserManagementView,
+)
+
+from .views.assignment_views import (
+    AssignmentListCreateView,
+    AssignmentDetailView,
+    AssignmentStatusUpdateView,
+    EmployeeAssignmentListView,
+)
+
+from .views.employee_views import (
+    EmployeeListView,
+    EmployeeDetailView
 )
 
 from .views.auth_views import CustomLoginView
@@ -55,7 +72,19 @@ urlpatterns = [
     path('categorized-results/', GetCategorizedMatchResultsView.as_view(), name='categorized_match_results'),
     path('matching-summary/', GetMatchingSummaryView.as_view(), name='matching_summary'),
     path('export-categorized/', ExportCategorizedResultsView.as_view(), name='export_categorized'),
+    
+    # User Management Views
     path('users/', UserManagementView.as_view(), name='user_management'),
+
+    # Assignment Views
+    path('assignments/', AssignmentListCreateView.as_view(), name='assignment-list-create'),
+    path('assignments/<int:pk>/', AssignmentDetailView.as_view(), name='assignment-detail'),
+    path('assignments/<int:pk>/status/', AssignmentStatusUpdateView.as_view(), name='assignment-status-update'),
+    path('assignments/<int:assignment_id>/progress/', EmployeeAssignmentListView.as_view(), name='employee-assignment-progress'),
+    
+    # Employee Views
+    path('employees/', EmployeeListView.as_view(), name='employee-list'),
+    path('employees/<int:employee_id>/', EmployeeDetailView.as_view(), name='employee-detail'),
 ]
     
 

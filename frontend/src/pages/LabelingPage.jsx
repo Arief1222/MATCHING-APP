@@ -189,7 +189,7 @@ const LabelingInterface = () => {
                           onChange={(e) => handleLabelSelection(item.id, e.target.value)}
                           className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 focus:ring-green-500"
                         />
-                        <span className="truncate" title={item.combined_string_1}>
+                        <span>
                           {item.combined_string_1}
                         </span>
                       </div>
@@ -205,7 +205,7 @@ const LabelingInterface = () => {
                           onChange={(e) => handleLabelSelection(item.id, e.target.value)}
                           className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
                         />
-                        <span className="truncate" title={item.combined_string_2}>
+                        <span>
                           {item.combined_string_2}
                         </span>
                       </div>

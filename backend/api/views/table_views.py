@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from ..permission import IsSuperadmin, IsKepalaBPS, IsEmployee
 from rest_framework.permissions import IsAuthenticated
+from ..models import DataTable
 import logging
 
 
@@ -296,7 +297,7 @@ class TableManagementView(APIView):
 
 class BulkTableOperationsView(APIView):
     """
-    View untuk operasi bulk pada multiple tabel
+    View untuk operasi bulk pada multiple tabelget_table_data
     """
     
     permissions_classes = [IsSuperadmin]

@@ -51,6 +51,7 @@ const MatchingPage = ({
       return res.data.columns || [];
     } catch (err) {
       toast.error(`Gagal mengambil kolom tabel ${tableName}`);
+      console.error("Error fetching columns:", err);
       return [];
     }
   };
@@ -65,6 +66,7 @@ const MatchingPage = ({
     setShowRecommendedCols(false);
     setShowColumnSelector(false);
     setIsTableConfirmed(false);
+    setCombinedPreview([]);
     
     // Fetch recommendations jika self matching
     if (matchingType === "self") {
@@ -78,6 +80,7 @@ const MatchingPage = ({
     setColumnsB(columns);
     setSelectedColumnsB([]);
     setIsTableConfirmed(false);
+    setCombinedPreview([]);
     
     // Fetch column mapping recommendations
     if (selectedTableA) {
@@ -95,7 +98,21 @@ const MatchingPage = ({
         { headers: authHeaders }
       );
 
-      const rekomendasi = recRes.data?.table_a_recommendations?.map(item => item.column) || [];
+      // PERBAIKAN: Pastikan data yang diambil dalam format yang benar
+      let rekomendasi = [];
+      if (recRes.data?.table_a_recommendations) {
+        if (Array.isArray(recRes.data.table_a_recommendations)) {
+          rekomendasi = recRes.data.table_a_recommendations.map(item => {
+            // Jika item adalah object dengan key 'column', ambil nilai 'column'
+            if (typeof item === 'object' && item.column) {
+              return item.column;
+            }
+            // Jika item adalah string, gunakan langsung
+            return typeof item === 'string' ? item : String(item);
+          });
+        }
+      }
+      
       setRecommendedCols(rekomendasi);
       
       if (rekomendasi.length > 0) {
@@ -105,13 +122,15 @@ const MatchingPage = ({
       }
     } catch (err) {
       toast.error("Gagal mengambil rekomendasi kolom");
-      console.error(err);
+      console.error("Error fetching recommendations:", err);
+      setShowColumnSelector(true);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchColumnMappingRecommendations = async (tableA, tableB) => {
+    setLoading(true);
     try {
       const authHeaders = await getAuthHeaders();
       const recRes = await axios.post(
@@ -120,16 +139,38 @@ const MatchingPage = ({
         { headers: authHeaders }
       );
 
-      // Handle column mapping recommendations
+      // PERBAIKAN: Handle column mapping recommendations dengan lebih aman
       if (recRes.data?.column_mapping_recommendations) {
-        setRecommendedCols(recRes.data.column_mapping_recommendations);
+        let mappingRecommendations = [];
+        
+        if (Array.isArray(recRes.data.column_mapping_recommendations)) {
+          mappingRecommendations = recRes.data.column_mapping_recommendations.map(item => {
+            if (typeof item === 'object') {
+              // Jika object memiliki struktur mapping, ekstrak informasi yang relevan
+              if (item.column_a && item.column_b) {
+                return `${item.column_a} ↔ ${item.column_b}`;
+              }
+              if (item.column) {
+                return item.column;
+              }
+              // Fallback ke string representation
+              return JSON.stringify(item);
+            }
+            return String(item);
+          });
+        }
+        
+        setRecommendedCols(mappingRecommendations);
         setShowRecommendedCols(true);
       } else {
         setShowColumnSelector(true);
       }
     } catch (err) {
       toast.error("Gagal mengambil rekomendasi mapping kolom");
-      console.error(err);
+      console.error("Error fetching column mapping:", err);
+      setShowColumnSelector(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -140,6 +181,8 @@ const MatchingPage = ({
     setSelectedColumnsB([]);
     setShowRecommendedCols(false);
     setShowColumnSelector(false);
+    setIsTableConfirmed(false);
+    setCombinedPreview([]);
     
     // Jika ganti ke self matching dan sudah ada table A, fetch recommendations
     if (type === "self" && selectedTableA) {
@@ -181,11 +224,24 @@ const MatchingPage = ({
         },
         { headers }
       );
+      
+      // PERBAIKAN: Pastikan data preview dalam format yang benar
+      let previewData = [];
+      if (res.data?.data && Array.isArray(res.data.data)) {
+        previewData = res.data.data.slice(0, 5).map(row => {
+          // Pastikan setiap row adalah object yang valid
+          if (typeof row === 'object' && row !== null) {
+            return row;
+          }
+          return {};
+        });
+      }
+      
+      setCombinedPreview(previewData);
       toast.success("Kolom berhasil digabung!");
-      setCombinedPreview(res.data.data?.slice(0, 5) || []);
     } catch (err) {
       toast.error("Gagal menggabungkan kolom!");
-      console.error(err);
+      console.error("Error in handleSubmitColumns:", err);
     } finally {
       setLoading(false);
     }
@@ -203,7 +259,7 @@ const MatchingPage = ({
     setLoading(true);
     try {
       const headers = await getAuthHeaders();
-      await axios.post(
+      const response = await axios.post(
         "http://127.0.0.1:8001/start-matching/",
         {
           table_a: selectedTableA.name,
@@ -213,17 +269,42 @@ const MatchingPage = ({
         },
         { headers }
       );
+      
+      console.log("Matching started:", response.data);
       toast.success("Proses matching dimulai! Cek status di Job History.");
     } catch (err) {
       toast.error("Matching gagal!");
-      console.error(err);
+      console.error("Error in handleMatch:", err);
+      
+      // Log error details untuk debugging
+      if (err.response) {
+        console.error("Error response:", err.response.data);
+        console.error("Error status:", err.response.status);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleAcceptRecommendation = async () => {
-    setSelectedColumnsA(recommendedCols);
+    // PERBAIKAN: Handle recommended columns dengan lebih aman
+    let processedRecommendations = [];
+    
+    if (matchingType === "cross") {
+      // Untuk cross matching, mungkin format berbeda
+      processedRecommendations = recommendedCols.map(rec => {
+        if (typeof rec === 'string' && rec.includes(' ↔ ')) {
+          // Jika format "columnA ↔ columnB", ambil columnA
+          return rec.split(' ↔ ')[0];
+        }
+        return rec;
+      });
+    } else {
+      // Untuk self matching
+      processedRecommendations = [...recommendedCols];
+    }
+    
+    setSelectedColumnsA(processedRecommendations);
     setShowRecommendedCols(false);
     toast.success("Menggunakan kolom yang direkomendasikan!");
 
@@ -235,11 +316,23 @@ const MatchingPage = ({
         "http://127.0.0.1:8001/prepare-combined/",
         {
           table_name: selectedTableA.name,
-          selected_columns: recommendedCols,
+          selected_columns: processedRecommendations,
         },
         { headers }
       );
-      setCombinedPreview(processRes.data.data?.slice(0, 5) || []);
+      
+      // PERBAIKAN: Handle preview data
+      let previewData = [];
+      if (processRes.data?.data && Array.isArray(processRes.data.data)) {
+        previewData = processRes.data.data.slice(0, 5).map(row => {
+          if (typeof row === 'object' && row !== null) {
+            return row;
+          }
+          return {};
+        });
+      }
+      
+      setCombinedPreview(previewData);
       toast.success("Kolom berhasil digabung!");
 
       // Langsung lakukan matching
@@ -248,7 +341,7 @@ const MatchingPage = ({
         {
           table_a: selectedTableA.name,
           table_b: matchingType === "cross" ? selectedTableB?.name : null,
-          columns_a: recommendedCols,
+          columns_a: processedRecommendations,
           columns_b: matchingType === "cross" ? selectedColumnsB : null
         },
         { headers }
@@ -256,7 +349,7 @@ const MatchingPage = ({
       toast.success("Proses matching dimulai! Cek status di Job History.");
     } catch (err) {
       toast.error("Gagal memproses kolom atau matching!");
-      console.error(err);
+      console.error("Error in handleAcceptRecommendation:", err);
     } finally {
       setLoading(false);
     }
@@ -315,23 +408,23 @@ const MatchingPage = ({
         )}
       </div>
 
-{selectedTableA && !isTableConfirmed && (
-  <div className="mt-4">
-    <button
-      onClick={() => {
-        setIsTableConfirmed(true);
-        if (matchingType === "self") {
-          fetchRecommendations(selectedTableA.name);
-        } else if (matchingType === "cross" && selectedTableA && selectedTableB) {
-          fetchColumnMappingRecommendations(selectedTableA.name, selectedTableB.name);
-        }
-      }}
-      className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold"
-    >
-      ✅ Konfirmasi Tabel
-    </button>
-  </div>
-          )}
+      {selectedTableA && !isTableConfirmed && (
+        <div className="mt-4">
+          <button
+            onClick={() => {
+              setIsTableConfirmed(true);
+              if (matchingType === "self") {
+                fetchRecommendations(selectedTableA.name);
+              } else if (matchingType === "cross" && selectedTableA && selectedTableB) {
+                fetchColumnMappingRecommendations(selectedTableA.name, selectedTableB.name);
+              }
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold"
+          >
+            ✅ Konfirmasi Tabel
+          </button>
+        </div>
+      )}
           
       {/* Rekomendasi Kolom */}
       {showRecommendedCols && (
@@ -348,7 +441,8 @@ const MatchingPage = ({
                 key={idx}
                 className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
               >
-                {col}
+                {/* PERBAIKAN: Pastikan col adalah string */}
+                {typeof col === 'string' ? col : JSON.stringify(col)}
               </span>
             ))}
           </div>
