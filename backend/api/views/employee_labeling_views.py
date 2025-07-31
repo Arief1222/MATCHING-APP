@@ -1,5 +1,7 @@
 # backend/api/views/employee_labeling_views.py
 from rest_framework.views import APIView
+
+import math
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -18,31 +20,115 @@ class EmployeeLabelingDataView(APIView):
     
     def get(self, request):
         try:
-            logger.info(f"=== Employee {request.user.username} requesting labeling data ===")
+            # Pagination parameters
+            page = int(request.GET.get('page', 1))
+            page_size = int(request.GET.get('page_size', 50))  # Default 50 item per page
+            offset = (page - 1) * page_size
             
-            # Ambil assignment yang ditugaskan kepada employee ini
-            employee_assignments = EmployeeAssignment.objects.filter(
+            # Assignment filter (optional - untuk load specific assignment)
+            assignment_id = request.GET.get('assignment_id')
+            
+            logger.info(f"Employee {request.user.username} requesting page {page} (size: {page_size})")
+            
+            # Base query untuk employee assignments
+            employee_assignments_query = EmployeeAssignment.objects.filter(
                 employee=request.user,
-                assignment__status__in=['sent', 'in_progress']  # Hanya assignment yang aktif
+                assignment__status__in=['sent', 'in_progress']
             ).select_related('assignment')
+            
+            # Filter by specific assignment if provided
+            if assignment_id:
+                employee_assignments_query = employee_assignments_query.filter(
+                    assignment_id=assignment_id
+                )
+            
+            employee_assignments = employee_assignments_query.all()
             
             if not employee_assignments.exists():
                 return Response({
                     'message': 'Tidak ada assignment yang ditugaskan kepada Anda',
                     'unlabeled_data': [],
-                    'total_assigned': 0,
-                    'total_completed': 0,
+                    'pagination': {
+                        'current_page': page,
+                        'page_size': page_size,
+                        'total_items': 0,
+                        'total_pages': 0,
+                        'has_next': False,
+                        'has_previous': False
+                    },
                     'assignments': []
                 })
             
+            # Hitung total data available dan ambil data dengan pagination
             all_labeling_data = []
+            total_available_items = 0
             assignment_summary = []
             
-            for emp_assignment in employee_assignments:
-                assignment = emp_assignment.assignment
+            with connection.cursor() as cursor:
+                # Hitung total items available untuk semua assignments
+                for emp_assignment in employee_assignments:
+                    assignment = emp_assignment.assignment
+                    
+                    # Count available data for this assignment
+                    cursor.execute("""
+                        SELECT COUNT(*) 
+                        FROM table_labeling 
+                        WHERE assignment_id = %s 
+                        AND (confirmed_by_id IS NULL OR confirmed_by_id != %s)
+                    """, [assignment.id, request.user.id])
+                    
+                    available_count = cursor.fetchone()[0]
+                    # Batasi dengan data_count dari employee assignment
+                    available_count = min(available_count, emp_assignment.data_count)
+                    total_available_items += available_count
+                    
+                    # Assignment summary
+                    completed_count = LabelingData.objects.filter(
+                        assignment=assignment,
+                        confirmed_by=request.user
+                    ).count()
+                    
+                    assignment_info = {
+                        'assignment_id': assignment.id,
+                        'assignment_title': assignment.title,
+                        'description': assignment.description,
+                        'total_data': emp_assignment.data_count,
+                        'completed_data': completed_count,
+                        'available_data': available_count,
+                        'progress_percentage': round((completed_count / emp_assignment.data_count * 100) if emp_assignment.data_count > 0 else 0, 2),
+                        'status': assignment.status
+                    }
+                    assignment_summary.append(assignment_info)
                 
-                # Query untuk mendapatkan data labeling dalam range yang ditugaskan
-                with connection.cursor() as cursor:
+                # Ambil data dengan pagination (gabungan dari semua assignments)
+                current_offset = offset
+                remaining_limit = page_size
+                
+                for emp_assignment in employee_assignments:
+                    if remaining_limit <= 0:
+                        break
+                        
+                    assignment = emp_assignment.assignment
+                    
+                    # Hitung berapa data available untuk assignment ini
+                    cursor.execute("""
+                        SELECT COUNT(*) 
+                        FROM table_labeling 
+                        WHERE assignment_id = %s 
+                        AND (confirmed_by_id IS NULL OR confirmed_by_id != %s)
+                    """, [assignment.id, request.user.id])
+                    
+                    assignment_available = cursor.fetchone()[0]
+                    assignment_available = min(assignment_available, emp_assignment.data_count)
+                    
+                    # Skip jika offset masih lebih besar dari data assignment ini
+                    if current_offset >= assignment_available:
+                        current_offset -= assignment_available
+                        continue
+                    
+                    # Ambil data dari assignment ini
+                    assignment_limit = min(remaining_limit, assignment_available - current_offset)
+                    
                     query = """
                         SELECT 
                             id,
@@ -58,16 +144,17 @@ class EmployeeLabelingDataView(APIView):
                         ORDER BY id ASC
                         OFFSET %s LIMIT %s
                     """
-                    cursor.execute(query, [
-                        emp_assignment.assignment.id,  # assignment_id
-                        request.user.id,              # confirmed_by_id
-                        emp_assignment.start_index,   # OFFSET
-                        emp_assignment.data_count     # LIMIT
-                    ])
-                    rows = cursor.fetchall()
-
                     
-                    # Convert ke format yang mudah digunakan frontend
+                    cursor.execute(query, [
+                        assignment.id,
+                        request.user.id,
+                        emp_assignment.start_index + current_offset,
+                        assignment_limit
+                    ])
+                    
+                    rows = cursor.fetchall()
+                    
+                    # Convert ke format frontend
                     for row in rows:
                         labeling_item = {
                             'id': row[0],
@@ -81,43 +168,38 @@ class EmployeeLabelingDataView(APIView):
                             'assignment_title': assignment.title
                         }
                         all_labeling_data.append(labeling_item)
-                
-                # Hitung progress untuk assignment ini
-                completed_count = LabelingData.objects.filter(
-                    assignment=assignment,
-                    confirmed_by=request.user
-                ).count()
-                
-                assignment_info = {
-                    'assignment_id': assignment.id,
-                    'assignment_title': assignment.title,
-                    'description': assignment.description,
-                    'total_data': emp_assignment.data_count,
-                    'completed_data': completed_count,
-                    'remaining_data': emp_assignment.data_count - completed_count,
-                    'progress_percentage': round((completed_count / emp_assignment.data_count * 100) if emp_assignment.data_count > 0 else 0, 2),
-                    'start_index': emp_assignment.start_index,
-                    'end_index': emp_assignment.end_index,
-                    'status': assignment.status
-                }
-                assignment_summary.append(assignment_info)
+                    
+                    remaining_limit -= len(rows)
+                    current_offset = 0  # Reset offset untuk assignment berikutnya
             
-            # Hitung total statistik
+            # Pagination info
+            total_pages = (total_available_items + page_size - 1) // page_size if page_size > 0 else 0
+            has_next = page < total_pages
+            has_previous = page > 1
+            
+            # Summary statistik
             total_assigned = sum(info['total_data'] for info in assignment_summary)
             total_completed = sum(info['completed_data'] for info in assignment_summary)
-            overall_progress = round((total_completed / total_assigned * 100) if total_assigned > 0 else 0, 2)
             
-            logger.info(f"Employee {request.user.username} has {len(all_labeling_data)} unlabeled data items")
+            logger.info(f"Returned {len(all_labeling_data)} items for page {page}")
             
             return Response({
-                'message': f'Data berhasil dimuat untuk {len(employee_assignments)} assignment',
+                'message': f'Data berhasil dimuat (halaman {page})',
                 'unlabeled_data': all_labeling_data,
+                'pagination': {
+                    'current_page': page,
+                    'page_size': page_size,
+                    'total_items': total_available_items,
+                    'total_pages': total_pages,
+                    'has_next': has_next,
+                    'has_previous': has_previous
+                },
                 'assignments': assignment_summary,
                 'summary': {
                     'total_assigned': total_assigned,
                     'total_completed': total_completed,
-                    'remaining': total_assigned - total_completed,
-                    'overall_progress': overall_progress
+                    'total_available': total_available_items,
+                    'overall_progress': round((total_completed / total_assigned * 100) if total_assigned > 0 else 0, 2)
                 },
                 'employee_info': {
                     'username': request.user.username,
@@ -127,12 +209,11 @@ class EmployeeLabelingDataView(APIView):
             })
             
         except Exception as e:
-            logger.error(f"Error getting labeling data for employee {request.user.username}: {e}", exc_info=True)
+            logger.error(f"Error getting labeling data: {e}", exc_info=True)
             return Response({
                 'error': f'Failed to get labeling data: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
+            
 class EmployeeSubmitLabelingView(APIView):
     """
     View untuk employee submit hasil labeling

@@ -139,18 +139,7 @@ const Sidebar = ({
       {/* Sidebar */}
       <div className="fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-          <div>
-            <h2 className="text-xl font-bold">Dashboard</h2>
-            <p className="text-sm text-blue-100 capitalize">{userRole || 'User'} Panel</p>
-          </div>
-          <button 
-            onClick={toggleSidebar}
-            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+       
 
         {/* User Info */}
         <div className="p-4 border-b bg-gray-50">
@@ -202,7 +191,7 @@ const Sidebar = ({
           </nav>
         </div>
 
-        {/* Tables Section - Only for Superadmin */}
+        {/* Tables Section - Only for Superadmin
         {userRole === 'superadmin' && (
           <div className="p-4 border-t">
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
@@ -243,7 +232,7 @@ const Sidebar = ({
               )}
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Employee Stats Section - Only for Employee */}
         {userRole === 'employee' && (

@@ -1028,9 +1028,9 @@ const AssignmentPage = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Created
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
-                      </th>
+                      </th> */}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -1106,13 +1106,13 @@ const AssignmentPage = () => {
                           {assignment.created_at ? new Date(assignment.created_at).toLocaleDateString('id-ID') : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
+                          {/* <button
                             onClick={() => window.open(`/api/assignments/${assignment.id}/progress/`, '_blank')}
                             className="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded text-xs mr-2"
                           >
                             <Eye className="w-3 h-3 inline mr-1" />
                             Detail
-                          </button>
+                          </button> */}
                         </td>
                       </tr>
                     ))}

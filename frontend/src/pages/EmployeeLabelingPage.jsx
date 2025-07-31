@@ -212,7 +212,7 @@ const EmployeeLabelingPage = () => {
         {/* Statistics Cards */}
         <div className="p-6 border-b bg-gray-50">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            {/* <div className="bg-white p-4 rounded-lg shadow-sm border">
               <div className="flex items-center">
                 <Target className="w-8 h-8 text-blue-600 mr-3" />
                 <div>
@@ -220,7 +220,7 @@ const EmployeeLabelingPage = () => {
                   <div className="text-sm text-gray-600">Total Ditugaskan</div>
                 </div>
               </div>
-            </div>
+            </div> */}
             
             <div className="bg-white p-4 rounded-lg shadow-sm border">
               <div className="flex items-center">
@@ -232,7 +232,7 @@ const EmployeeLabelingPage = () => {
               </div>
             </div>
             
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            {/* <div className="bg-white p-4 rounded-lg shadow-sm border">
               <div className="flex items-center">
                 <Clock className="w-8 h-8 text-orange-600 mr-3" />
                 <div>
@@ -240,7 +240,7 @@ const EmployeeLabelingPage = () => {
                   <div className="text-sm text-gray-600">Tersisa</div>
                 </div>
               </div>
-            </div>
+            </div> */}
             
             <div className="bg-white p-4 rounded-lg shadow-sm border">
               <div className="flex items-center">
