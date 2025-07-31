@@ -36,22 +36,39 @@ class AssignmentListCreateView(generics.ListCreateAPIView):
         print("Request data:", request.data)
         print("Request user:", request.user)
         print("User groups:", [group.name for group in request.user.groups.all()])
-        
+
         serializer = self.get_serializer(data=request.data)
-        
+
         try:
             serializer.is_valid(raise_exception=True)
             print("Serializer validation passed")
-            
+
+            # Cek dan buat DataTable jika belum ada
+            if not DataTable.objects.filter(name="table_labeling").exists():
+                print("Creating DataTable metadata for 'table_labeling'")
+                try:
+                    admin_user = User.objects.get(username="superadmin")
+                except User.DoesNotExist:
+                    raise Exception("User superadmin tidak ditemukan.")
+                
+                DataTable.objects.create(
+                    name="table_labeling",
+                    original_filename="table_labeling.xlsx",
+                    created_by=admin_user,
+                    row_count=LabelingData.objects.count(),
+                    column_names=["combined_string_1", "combined_string_2", "label"]
+                )
+                print("DataTable 'table_labeling' created.")
+
             self.perform_create(serializer)
             print("Assignment created successfully")
-            
+
             headers = self.get_success_headers(serializer.data)
             created_assignment = Assignment.objects.get(id=serializer.data['id'])
             response_serializer = AssignmentSerializer(created_assignment)
-            
+
             return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-            
+
         except serializers.ValidationError as e:
             print("Validation error:", e.detail)
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -60,9 +77,12 @@ class AssignmentListCreateView(generics.ListCreateAPIView):
             import traceback
             traceback.print_exc()
             return Response(
-                {'error': f'Internal server error: {str(e)}'}, 
+                {'error': f'Internal server error: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+            
+            
+            
 
 
 class AssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
