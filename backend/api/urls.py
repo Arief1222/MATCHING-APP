@@ -34,11 +34,19 @@ from .views.assignment_views import (
     AssignmentDetailView,
     AssignmentStatusUpdateView,
     EmployeeAssignmentListView,
+    MyAssignmentsView,
 )
 
 from .views.employee_views import (
     EmployeeListView,
     EmployeeDetailView
+)
+
+# Import employee labeling views
+from .views.employee_labeling_views import (
+    EmployeeLabelingDataView,
+    EmployeeSubmitLabelingView,
+    EmployeeAssignmentStatusView
 )
 
 from .views.auth_views import CustomLoginView
@@ -85,6 +93,12 @@ urlpatterns = [
     # Employee Views
     path('employees/', EmployeeListView.as_view(), name='employee-list'),
     path('employees/<int:employee_id>/', EmployeeDetailView.as_view(), name='employee-detail'),
+
+     # Employee Assignment & Labeling Views (untuk Employee)
+    path('my-assignments/', MyAssignmentsView.as_view(), name='my-assignments'),
+    path('my-labeling-data/', EmployeeLabelingDataView.as_view(), name='employee-labeling-data'),
+    path('submit-my-labeling/', EmployeeSubmitLabelingView.as_view(), name='employee-submit-labeling'),
+    path('my-assignment-status/', EmployeeAssignmentStatusView.as_view(), name='employee-assignment-status'),
 ]
     
 

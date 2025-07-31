@@ -252,21 +252,29 @@ class StartMatchingView(APIView):
 
 class GetLabelingDataView(APIView):
     permission_classes = [IsSuperadmin | IsEmployee]
+
     def get(self, request):
-        """Get data yang perlu dilabeling"""
         try:
-            # Get unlabeled data
-            unlabeled = LabelingData.objects.filter(
-                label__isnull=True
-            ).values()
-            
+            user = request.user
+
+            # Jika superadmin, tampilkan semua
+            if user.is_superuser:
+                unlabeled = LabelingData.objects.filter(label__isnull=True)
+            else:
+                # Jika employee biasa, filter berdasarkan dirinya
+                unlabeled = LabelingData.objects.filter(
+                    employee=user,
+                    label__isnull=True
+                )
+
             return Response({
-                'unlabeled_data': list(unlabeled),
-                'total_count': len(unlabeled)
+                'unlabeled_data': list(unlabeled.values()),
+                'total_count': unlabeled.count()
             })
-            
+
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+
 
 
 class SubmitLabelingView(APIView):

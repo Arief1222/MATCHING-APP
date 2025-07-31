@@ -29,7 +29,7 @@ class EmployeeAssignmentSerializer(serializers.ModelSerializer):
     def get_completed_count(self, obj):
         return LabelingData.objects.filter(
             assignment=obj.assignment, 
-            confirmed_by=obj.employee
+            confirmed_by_id=obj.employee.id 
         ).count()
 
     def get_total_count(self, obj):

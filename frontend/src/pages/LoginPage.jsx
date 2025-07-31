@@ -1,3 +1,4 @@
+// frontend/src/pages/LoginPage.jsx
 import React, { useState } from 'react';
 import { Eye, EyeOff, User, Lock, AlertCircle, LogIn } from 'lucide-react';
 
@@ -19,41 +20,48 @@ const LoginPage = () => {
 
     setLoading(true);
     try {
+      console.log('Attempting login with:', { username, password: '***' });
+
       const response = await fetch("http://127.0.0.1:8001/login/", {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
+          "Content-Type": "application/json" // Changed to JSON
         },
-        body: new URLSearchParams({
-          username,
-          password
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password
         })
       });
 
       const data = await response.json();
+      console.log('Login response:', { status: response.status, data });
 
       if (!response.ok) {
-        throw new Error(data.detail || "Login gagal");
+        throw new Error(data.error || data.detail || "Login gagal");
       }
 
       // Simpan token dan data user
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Arahkan berdasarkan role
+      console.log('Login successful, user role:', data.user.role);
+
+      // Redirect berdasarkan role - reload page untuk trigger App.jsx
       const role = data.user.role?.toLowerCase();
-      if (role === 'superadmin') {
-        window.location.href = "/UploadPage";
-      } else if (role === 'employee') {
-        window.location.href = "/LabelingPage";
-      }
-      // else if (role === 'kepala bps') {
-      //   window.location.href = "/monitoring";
-      // }
-      else {
-        window.location.href = "/tables";
-      }
+      
+      // Small delay to ensure localStorage is written
+      setTimeout(() => {
+        if (role === 'superadmin') {
+          window.location.reload(); // App.jsx will handle routing
+        } else if (role === 'employee') {
+          window.location.reload(); // App.jsx will show employee interface
+        } else {
+          window.location.reload(); // Default routing
+        }
+      }, 100);
+
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -90,7 +98,7 @@ const LoginPage = () => {
 
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Username</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <User className="h-5 w-5 text-gray-400" />
@@ -103,12 +111,13 @@ const LoginPage = () => {
                     className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="Masukkan username Anda"
                     disabled={loading}
+                    autoComplete="username"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Password</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Lock className="h-5 w-5 text-gray-400" />
@@ -121,6 +130,7 @@ const LoginPage = () => {
                     className="w-full pl-12 pr-12 py-4 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="Masukkan password Anda"
                     disabled={loading}
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"
@@ -157,7 +167,7 @@ const LoginPage = () => {
               </p>
               <div className="flex flex-wrap justify-center gap-6 text-xs text-gray-500">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
                   <span>Superadmin: Full Access</span>
                 </div>
                 <div className="flex items-center gap-2">

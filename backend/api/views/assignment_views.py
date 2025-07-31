@@ -6,7 +6,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 from django.utils import timezone
 from django.db import transaction
-
+from django.db import connection
+from api.models import LabelingData
 from api.models import Assignment, EmployeeAssignment, LabelingData, DataTable, User
 from api.serializers import (
     AssignmentSerializer,
@@ -118,46 +119,91 @@ class AssignmentStatusUpdateView(APIView):
         try:
             assignment = Assignment.objects.get(pk=pk)
             new_status = request.data.get('status')
-            
+
             print(f"=== Status Update Request ===")
             print(f"Current status: {assignment.status}")
             print(f"Requested status: {new_status}")
             print(f"Has employees: {assignment.employee_assignments.exists()}")
-            
+
             # Validasi: Admin hanya bisa mengubah draft ke sent
             if assignment.status == 'draft' and new_status == 'sent':
                 if assignment.employee_assignments.exists():
                     assignment.status = 'sent'
                     assignment.save(update_fields=['status', 'updated_at'])
-                    
+
+                    # 💡 Generate data labeling setelah status jadi 'sent'
+                    dataset_table = assignment.dataset.name  # nama tabel dari DataTable
+                    with connection.cursor() as cursor:
+                        cursor.execute(f"""
+                            SELECT id, combined_string_1, combined_string_2, source_table, reference_table
+                            FROM {dataset_table}
+                            ORDER BY id ASC
+                        """)
+                        raw_data = cursor.fetchall()
+
+                    employee_assignments = assignment.employee_assignments.all()
+                    total_employees = employee_assignments.count()
+                    total_data = len(raw_data)
+                    chunk_size = total_data // total_employees if total_employees > 0 else total_data
+
+                    labeling_data_objects = []
+                    for i, ea in enumerate(employee_assignments):
+                        start = i * chunk_size
+                        end = total_data if i == total_employees - 1 else (i + 1) * chunk_size
+                        if start >= end:
+                            continue
+
+                        # Set index info ke tabel pivot
+                        ea.start_index = raw_data[start][0]  # id awal
+                        ea.end_index = raw_data[end - 1][0]  # id akhir
+                        ea.data_count = end - start
+                        ea.save(update_fields=['start_index', 'end_index', 'data_count'])
+
+                        # Generate LabelingData
+                        for row in raw_data[start:end]:
+                            labeling_data_objects.append(LabelingData(
+                                data_id=row[0],
+                                combined_string_1=row[1],
+                                combined_string_2=row[2],
+                                source_table=row[3],
+                                reference_table=row[4],
+                                assignment=assignment,
+                                employee=ea.employee
+                            ))
+
+                    # Ini benar karena ambil dari model Django
+                    LabelingData.objects.filter(assignment=assignment, employee=request.user)
+
+                    print(f"✅ Created {len(labeling_data_objects)} labeling records.")
+
                     serializer = AssignmentSerializer(assignment)
                     return Response({
-                        'message': 'Assignment status updated to sent',
+                        'message': 'Assignment status updated to sent and labeling data generated',
                         'assignment': serializer.data
                     })
                 else:
                     return Response({
                         'error': 'Cannot send assignment without employee assignments'
                     }, status=400)
-            
+
             # Admin bisa cancel assignment (dari status apapun kecuali completed)
             elif new_status == 'cancelled' and assignment.status != 'completed':
                 assignment.status = 'cancelled'
                 assignment.save(update_fields=['status', 'updated_at'])
-                
+
                 serializer = AssignmentSerializer(assignment)
                 return Response({
                     'message': 'Assignment cancelled',
                     'assignment': serializer.data
                 })
-            
+
             else:
                 return Response({
                     'error': f'Cannot change status from {assignment.status} to {new_status}. '
-                            f'Admin can only change: draft→sent or any→cancelled. '
-                            f'Other status changes happen automatically based on employee progress.'
+                             f'Admin can only change: draft→sent or any→cancelled. '
+                             f'Other status changes happen automatically based on employee progress.'
                 }, status=400)
-                
+
         except Assignment.DoesNotExist:
             return Response({'error': 'Assignment not found'}, status=404)
         except Exception as e:
