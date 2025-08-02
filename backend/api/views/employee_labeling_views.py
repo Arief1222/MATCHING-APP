@@ -1,6 +1,6 @@
 # backend/api/views/employee_labeling_views.py
 from rest_framework.views import APIView
-
+from django.db import transaction
 import math
 from rest_framework.response import Response
 from rest_framework import status
@@ -213,106 +213,247 @@ class EmployeeLabelingDataView(APIView):
             return Response({
                 'error': f'Failed to get labeling data: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-class EmployeeSubmitLabelingView(APIView):
+
+class EmployeeSubmitBatchLabelingView(APIView):
     """
-    View untuk employee submit hasil labeling
+    View untuk employee submit hasil labeling secara batch
     """
     permission_classes = [IsAuthenticated, IsEmployee]
     
+    @transaction.atomic
     def post(self, request):
         try:
-            labeling_id = request.data.get('labeling_id')
-            label = request.data.get('label')  # 'MATCH' atau 'UNMATCH'
+            labeled_items = request.data.get('labeled_items', [])
             
-            logger.info(f"Employee {request.user.username} submitting label for ID {labeling_id}: {label}")
-            
-            # Validasi input
-            if not labeling_id or not label:
+            if not labeled_items:
                 return Response({
-                    'error': 'labeling_id dan label harus diisi'
+                    'error': 'Tidak ada data yang dipilih untuk dilabeling'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            if label not in ['MATCH', 'UNMATCH']:
-                return Response({
-                    'error': 'Label harus MATCH atau UNMATCH'
-                }, status=status.HTTP_400_BAD_REQUEST)
+            logger.info(f"Employee {request.user.username} submitting batch labeling for {len(labeled_items)} items")
             
-            # Ambil data labeling
-            try:
-                labeling_data = LabelingData.objects.get(id=labeling_id)
-            except LabelingData.DoesNotExist:
-                return Response({
-                    'error': f'Data labeling dengan ID {labeling_id} tidak ditemukan'
-                }, status=status.HTTP_404_NOT_FOUND)
+            success_count = 0
+            failed_items = []
             
-            # Cek apakah employee ini berhak melabeling data ini
-            if labeling_data.assignment:
-                employee_assignment = EmployeeAssignment.objects.filter(
-                    assignment=labeling_data.assignment,
-                    employee=request.user
-                ).first()
+            for item in labeled_items:
+                labeling_id = item.get('labeling_id')
+                label = item.get('label')  # 'MATCH' atau 'UNMATCH'
                 
-                if not employee_assignment:
-                    return Response({
-                        'error': 'Anda tidak memiliki akses untuk melabeling data ini'
-                    }, status=status.HTTP_403_FORBIDDEN)
+                # Validasi item
+                if not labeling_id or not label:
+                    failed_items.append({
+                        'labeling_id': labeling_id,
+                        'error': 'labeling_id dan label harus diisi'
+                    })
+                    continue
+                
+                if label not in ['MATCH', 'UNMATCH']:
+                    failed_items.append({
+                        'labeling_id': labeling_id,
+                        'error': 'Label harus MATCH atau UNMATCH'
+                    })
+                    continue
+                
+                try:
+                    # Ambil data labeling
+                    labeling_data = LabelingData.objects.get(id=labeling_id)
+                    
+                    # Cek apakah employee ini berhak melabeling data ini
+                    if labeling_data.assignment:
+                        employee_assignment = EmployeeAssignment.objects.filter(
+                            assignment=labeling_data.assignment,
+                            employee=request.user
+                        ).first()
+                        
+                        if not employee_assignment:
+                            failed_items.append({
+                                'labeling_id': labeling_id,
+                                'error': 'Anda tidak memiliki akses untuk melabeling data ini'
+                            })
+                            continue
+                    
+                    # Cek apakah data sudah dilabeling
+                    if labeling_data.confirmed_by:
+                        failed_items.append({
+                            'labeling_id': labeling_id,
+                            'error': f'Data ini sudah dilabeling oleh {labeling_data.confirmed_by.username}'
+                        })
+                        continue
+                    
+                    # Update data labeling - HANYA UPDATE STATUS, TIDAK HAPUS
+                    labeling_data.label = label
+                    labeling_data.confirmed_by = request.user
+                    labeling_data.save()
+                    
+                    success_count += 1
+                    
+                except LabelingData.DoesNotExist:
+                    failed_items.append({
+                        'labeling_id': labeling_id,
+                        'error': f'Data labeling dengan ID {labeling_id} tidak ditemukan'
+                    })
+                    continue
+                except Exception as e:
+                    failed_items.append({
+                        'labeling_id': labeling_id,
+                        'error': f'Error processing item: {str(e)}'
+                    })
+                    continue
             
-            # Cek apakah data sudah dilabeling
-            if labeling_data.confirmed_by:
-                return Response({
-                    'error': f'Data ini sudah dilabeling oleh {labeling_data.confirmed_by.username}'
-                }, status=status.HTTP_400_BAD_REQUEST)
+            # Update progress untuk semua assignment yang terlibat
+            updated_assignments = set()
+            for item in labeled_items:
+                if item.get('labeling_id'):
+                    try:
+                        labeling_data = LabelingData.objects.get(id=item.get('labeling_id'))
+                        if labeling_data.assignment and labeling_data.assignment.id not in updated_assignments:
+                            assignment = labeling_data.assignment
+                            
+                            # Update employee assignment progress
+                            employee_assignment = EmployeeAssignment.objects.get(
+                                assignment=assignment,
+                                employee=request.user
+                            )
+                            
+                            # Hitung ulang completed count
+                            completed_count = LabelingData.objects.filter(
+                                assignment=assignment,
+                                confirmed_by=request.user
+                            ).count()
+                            
+                            employee_assignment.completed_count = completed_count
+                            
+                            # Mark sebagai started jika belum
+                            if not employee_assignment.is_started:
+                                employee_assignment.is_started = True
+                            
+                            employee_assignment.save()
+                            
+                            # Auto update assignment status ke in_progress jika masih sent
+                            if assignment.status == 'sent':
+                                assignment.status = 'in_progress'
+                                assignment.save()
+                                logger.info(f"Auto updated assignment {assignment.id} status: sent → in_progress")
+                            
+                            updated_assignments.add(assignment.id)
+                    except:
+                        continue
             
-            # Update data labeling
-            labeling_data.label = label
-            labeling_data.confirmed_by = request.user
-            labeling_data.save()
-            
-            # Update progress pada employee assignment jika ada
-            if labeling_data.assignment:
-                employee_assignment = EmployeeAssignment.objects.get(
-                    assignment=labeling_data.assignment,
-                    employee=request.user
-                )
-                
-                # Hitung ulang completed count
-                completed_count = LabelingData.objects.filter(
-                    assignment=labeling_data.assignment,
-                    confirmed_by=request.user
-                ).count()
-                
-                employee_assignment.completed_count = completed_count
-                
-                # Mark sebagai started jika belum
-                if not employee_assignment.is_started:
-                    employee_assignment.is_started = True
-                
-                employee_assignment.save()
-                
-                # Auto update assignment status ke in_progress jika masih sent
-                assignment = labeling_data.assignment
-                if assignment.status == 'sent':
-                    assignment.status = 'in_progress'
-                    assignment.save()
-                    logger.info(f"Auto updated assignment {assignment.id} status: sent → in_progress")
-            
-            logger.info(f"Data {labeling_id} successfully labeled as {label} by {request.user.username}")
+            logger.info(f"Batch labeling completed: {success_count} success, {len(failed_items)} failed")
             
             return Response({
-                'message': f'Data berhasil dilabeling sebagai {label}',
-                'labeling_id': labeling_id,
-                'label': label,
-                'confirmed_by': request.user.username,
-                'data_saved': True
+                'message': f'Batch labeling selesai: {success_count} berhasil, {len(failed_items)} gagal',
+                'success_count': success_count,
+                'failed_count': len(failed_items),
+                'failed_items': failed_items,
+                'total_processed': len(labeled_items)
             })
             
         except Exception as e:
-            logger.error(f"Error submitting labeling: {e}", exc_info=True)
+            logger.error(f"Error in batch labeling: {e}", exc_info=True)
             return Response({
-                'error': f'Failed to submit labeling: {str(e)}'
+                'error': f'Failed to process batch labeling: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# Keep existing single submit view for backward compatibility
+# class EmployeeSubmitLabelingView(APIView):
+#     """
+#     View untuk employee submit hasil labeling (single item)
+#     """
+#     permission_classes = [IsAuthenticated, IsEmployee]
+    
+#     def post(self, request):
+#         try:
+#             labeling_id = request.data.get('labeling_id')
+#             label = request.data.get('label')  # 'MATCH' atau 'UNMATCH'
+            
+#             logger.info(f"Employee {request.user.username} submitting label for ID {labeling_id}: {label}")
+            
+#             # Validasi input
+#             if not labeling_id or not label:
+#                 return Response({
+#                     'error': 'labeling_id dan label harus diisi'
+#                 }, status=status.HTTP_400_BAD_REQUEST)
+            
+#             if label not in ['MATCH', 'UNMATCH']:
+#                 return Response({
+#                     'error': 'Label harus MATCH atau UNMATCH'
+#                 }, status=status.HTTP_400_BAD_REQUEST)
+            
+#             # Ambil data labeling
+#             try:
+#                 labeling_data = LabelingData.objects.get(id=labeling_id)
+#             except LabelingData.DoesNotExist:
+#                 return Response({
+#                     'error': f'Data labeling dengan ID {labeling_id} tidak ditemukan'
+#                 }, status=status.HTTP_404_NOT_FOUND)
+            
+#             # Cek apakah employee ini berhak melabeling data ini
+#             if labeling_data.assignment:
+#                 employee_assignment = EmployeeAssignment.objects.filter(
+#                     assignment=labeling_data.assignment,
+#                     employee=request.user
+#                 ).first()
+                
+#                 if not employee_assignment:
+#                     return Response({
+#                         'error': 'Anda tidak memiliki akses untuk melabeling data ini'
+#                     }, status=status.HTTP_403_FORBIDDEN)
+            
+#             # Cek apakah data sudah dilabeling
+#             if labeling_data.confirmed_by:
+#                 return Response({
+#                     'error': f'Data ini sudah dilabeling oleh {labeling_data.confirmed_by.username}'
+#                 }, status=status.HTTP_400_BAD_REQUEST)
+            
+#             # Update data labeling - HANYA UPDATE STATUS, TIDAK HAPUS
+#             labeling_data.label = label
+#             labeling_data.confirmed_by = request.user
+#             labeling_data.save()
+            
+#             # Update progress pada employee assignment jika ada
+#             if labeling_data.assignment:
+#                 employee_assignment = EmployeeAssignment.objects.get(
+#                     assignment=labeling_data.assignment,
+#                     employee=request.user
+#                 )
+                
+#                 # Hitung ulang completed count
+#                 completed_count = LabelingData.objects.filter(
+#                     assignment=labeling_data.assignment,
+#                     confirmed_by=request.user
+#                 ).count()
+                
+#                 employee_assignment.completed_count = completed_count
+                
+#                 # Mark sebagai started jika belum
+#                 if not employee_assignment.is_started:
+#                     employee_assignment.is_started = True
+                
+#                 employee_assignment.save()
+                
+#                 # Auto update assignment status ke in_progress jika masih sent
+#                 assignment = labeling_data.assignment
+#                 if assignment.status == 'sent':
+#                     assignment.status = 'in_progress'
+#                     assignment.save()
+#                     logger.info(f"Auto updated assignment {assignment.id} status: sent → in_progress")
+            
+#             logger.info(f"Data {labeling_id} successfully labeled as {label} by {request.user.username}")
+            
+#             return Response({
+#                 'message': f'Data berhasil dilabeling sebagai {label}',
+#                 'labeling_id': labeling_id,
+#                 'label': label,
+#                 'confirmed_by': request.user.username,
+#                 'data_saved': True
+#             })
+            
+#         except Exception as e:
+#             logger.error(f"Error submitting labeling: {e}", exc_info=True)
+#             return Response({
+#                 'error': f'Failed to submit labeling: {str(e)}'
+#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class EmployeeAssignmentStatusView(APIView):
     """

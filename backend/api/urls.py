@@ -27,8 +27,10 @@ from .views import (
     EmployeeAssignmentListView,
     EmployeeListView,
     UserManagementView,
+    
+    
 )
-
+from .views.employee_labeling_views import EmployeeSubmitBatchLabelingView
 from .views.assignment_views import (
     AssignmentListCreateView,
     AssignmentDetailView,
@@ -45,8 +47,9 @@ from .views.employee_views import (
 # Import employee labeling views
 from .views.employee_labeling_views import (
     EmployeeLabelingDataView,
-    EmployeeSubmitLabelingView,
-    EmployeeAssignmentStatusView
+    EmployeeAssignmentStatusView,
+   
+    
 )
 
 from .views.auth_views import CustomLoginView
@@ -93,11 +96,12 @@ urlpatterns = [
     # Employee Views
     path('employees/', EmployeeListView.as_view(), name='employee-list'),
     path('employees/<int:employee_id>/', EmployeeDetailView.as_view(), name='employee-detail'),
+   path('submit-batch-labeling/', EmployeeSubmitBatchLabelingView.as_view(), name='employee-submit-batch-labeling'),
 
      # Employee Assignment & Labeling Views (untuk Employee)
     path('my-assignments/', MyAssignmentsView.as_view(), name='my-assignments'),
     path('my-labeling-data/', EmployeeLabelingDataView.as_view(), name='employee-labeling-data'),
-    path('submit-my-labeling/', EmployeeSubmitLabelingView.as_view(), name='employee-submit-labeling'),
+    #path('submit-my-labeling/', EmployeeSubmitLabelingView.as_view(), name='employee-submit-labeling'),
     path('my-assignment-status/', EmployeeAssignmentStatusView.as_view(), name='employee-assignment-status'),
 ]
     

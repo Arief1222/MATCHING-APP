@@ -88,15 +88,15 @@ const Sidebar = ({
         },
         {
           id: 'match',
-          label: 'Matching Results',
+          label: 'Matching Data',
           icon: GitMerge,
-          description: 'Hasil pencocokan data'
+          description: 'Proses Matching Data'
         },
         {
           id: 'unmatch',
-          label: 'Unmatched Data',
+          label: 'Matching Result',
           icon: GitPullRequest,
-          description: 'Data yang tidak cocok'
+          description: 'Data Hasil Matching'
         },
         {
           id: 'assignment',
