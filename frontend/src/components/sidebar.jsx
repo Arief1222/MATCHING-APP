@@ -1,4 +1,3 @@
-// frontend/src/components/sidebar.jsx - Updated dengan Role-based Menu
 import React, { useState, useEffect } from 'react';
 import { 
   Upload, 
@@ -10,9 +9,7 @@ import {
   ClipboardList,
   FileText,
   LogOut,
-  User,
-  Settings,
-  BarChart3
+  User
 } from 'lucide-react';
 
 const Sidebar = ({ 
@@ -71,9 +68,8 @@ const Sidebar = ({
       return [
         {
           id: 'employee-labeling',
-          label: 'My Labeling Tasks',
-          icon: ClipboardList,
-          description: 'Data labeling yang ditugaskan kepada saya'
+          label: 'My Tasks',
+          icon: ClipboardList
         }
       ];
     }
@@ -83,43 +79,36 @@ const Sidebar = ({
         {
           id: 'upload',
           label: 'Data Upload',
-          icon: Upload,
-          description: 'Upload dan kelola dataset'
+          icon: Upload
         },
         {
           id: 'match',
-          label: 'Matching Data',
-          icon: GitMerge,
-          description: 'Proses Matching Data'
+          label: 'Data Matching',
+          icon: GitMerge
         },
         {
           id: 'unmatch',
-          label: 'Matching Result',
-          icon: GitPullRequest,
-          description: 'Data Hasil Matching'
+          label: 'Match Results',
+          icon: GitPullRequest
         },
         {
           id: 'assignment',
-          label: 'Assignment Management',
-          icon: Users,
-          description: 'Kelola penugasan employee'
+          label: 'Team Management',
+          icon: Users
         },
         {
           id: 'labeling',
-          label: 'Labeling Interface',
-          icon: FileText,
-          description: 'Interface pelabelan data'
+          label: 'Labeling Hub',
+          icon: FileText
         }
       ];
     }
 
-    // Default menu for other roles
     return [
       {
         id: 'upload',
-        label: 'Data Management',
-        icon: Database,
-        description: 'Kelola data'
+        label: 'Data Hub',
+        icon: Database
       }
     ];
   };
@@ -132,156 +121,97 @@ const Sidebar = ({
     <>
       {/* Overlay for mobile */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" 
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden transition-all duration-300" 
         onClick={toggleSidebar}
       />
       
       {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
-        {/* Header */}
-       
+      <div className="fixed left-0 top-0 h-full w-80 bg-white/95 backdrop-blur-md shadow-xl z-50 border-r border-gray-100">
+        
+        {/* Close Button */}
+        <button
+          onClick={toggleSidebar}
+          className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-100 transition-all duration-200 lg:hidden"
+        >
+          <X className="w-5 h-5 text-gray-400" />
+        </button>
 
-        {/* User Info */}
-        <div className="p-4 border-b bg-gray-50">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
+        {/* User Profile */}
+        <div className="px-8 py-6 border-b border-gray-100">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                <User className="w-6 h-6 text-white" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
             </div>
-            <div>
-              <p className="font-medium text-gray-900">{user?.username || 'User'}</p>
-              <p className="text-sm text-gray-600">{user?.email || 'user@example.com'}</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 truncate">
+                {user?.username || 'User'}
+              </p>
+              <p className="text-sm text-gray-500 truncate">
+                {user?.email || 'user@example.com'}
+              </p>
             </div>
+          </div>
+          <div className="mt-4">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+              {userRole?.toUpperCase() || 'USER'}
+            </span>
           </div>
         </div>
 
-        {/* Menu Items */}
-        <div className="p-4">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Menu Utama
-          </h3>
-          <nav className="space-y-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onMenuSelect(item.id)}
-                  className={`w-full text-left p-3 rounded-lg transition-all duration-200 group ${
-                    activeMenu === item.id
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Icon className={`w-5 h-5 ${
-                      activeMenu === item.id ? 'text-white' : 'text-gray-500 group-hover:text-blue-600'
-                    }`} />
-                    <div>
-                      <div className="font-medium">{item.label}</div>
-                      <div className={`text-xs ${
-                        activeMenu === item.id ? 'text-blue-100' : 'text-gray-500'
-                      }`}>
-                        {item.description}
-                      </div>
+        {/* Navigation Menu */}
+        <div className="flex-1 overflow-y-auto py-6">
+          <nav className="px-6">
+            <div className="space-y-1">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeMenu === item.id;
+                
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onMenuSelect(item.id)}
+                    className={`w-full text-left group relative flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                      isActive
+                        ? 'bg-blue-400 text-white shadow-lg'
+                        : 'text-gray-700 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${
+                      isActive 
+                        ? 'bg-white/20' 
+                        : 'bg-slate-100 group-hover:bg-slate-200'
+                    }`}>
+                      <Icon className={`w-5 h-5 transition-colors duration-200 ${
+                        isActive ? 'text-white' : 'text-slate-600 group-hover:text-slate-700'
+                      }`} />
                     </div>
-                  </div>
-                </button>
-              );
-            })}
+                    <span className="font-medium">{item.label}</span>
+                    
+                    {/* Active indicator */}
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full"></div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </nav>
         </div>
 
-        {/* Tables Section - Only for Superadmin
-        {userRole === 'superadmin' && (
-          <div className="p-4 border-t">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Available Tables
-            </h3>
-            <div className="max-h-64 overflow-y-auto">
-              {loading ? (
-                <div className="text-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-sm text-gray-500 mt-2">Loading tables...</p>
-                </div>
-              ) : tables.length > 0 ? (
-                <div className="space-y-1">
-                  {tables.map((table, index) => (
-                    <button
-                      key={index}
-                      onClick={() => onTableSelect(table)}
-                      className="w-full text-left p-2 rounded hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <Database className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {table.name}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {table.records || 0} records
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  No tables available
-                </p>
-              )}
-            </div>
-          </div>
-        )} */}
-
-        {/* Employee Stats Section - Only for Employee */}
-        {userRole === 'employee' && (
-          <div className="p-4 border-t">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Quick Stats
-            </h3>
-            <div className="space-y-3">
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <BarChart3 className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-900">Progress Overview</span>
-                </div>
-                <p className="text-xs text-blue-700 mt-1">
-                  Lihat progress semua assignment Anda
-                </p>
-              </div>
-              
-              <div className="bg-green-50 p-3 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <ClipboardList className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-900">Active Tasks</span>
-                </div>
-                <p className="text-xs text-green-700 mt-1">
-                  Data yang perlu dilabeling hari ini
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-gray-50">
+        <div className="px-8 py-6 border-t border-gray-100">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center space-x-2 p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="w-full flex items-center space-x-3 px-4 py-3 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
           >
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">Logout</span>
+            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100">
+              <LogOut className="w-5 h-5" />
+            </div>
+            <span className="font-medium">Sign Out</span>
           </button>
-          
-          <div className="mt-3 text-center">
-            <p className="text-xs text-gray-500">
-              Data Labeling System v1.0
-            </p>
-            <p className="text-xs text-gray-400">
-              Role: {userRole?.toUpperCase() || 'USER'}
-            </p>
-          </div>
         </div>
       </div>
     </>

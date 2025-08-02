@@ -1,6 +1,5 @@
-// frontend/src/pages/LoginPage.jsx
-import React, { useState } from 'react';
-import { Eye, EyeOff, User, Lock, AlertCircle, LogIn } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, EyeOff, User, Lock, AlertCircle } from 'lucide-react';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
@@ -8,6 +7,11 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -25,7 +29,7 @@ const LoginPage = () => {
       const response = await fetch("http://127.0.0.1:8001/login/", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json" // Changed to JSON
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           username: username.trim(),
@@ -40,23 +44,20 @@ const LoginPage = () => {
         throw new Error(data.error || data.detail || "Login gagal");
       }
 
-      // Simpan token dan data user
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
       console.log('Login successful, user role:', data.user.role);
 
-      // Redirect berdasarkan role - reload page untuk trigger App.jsx
       const role = data.user.role?.toLowerCase();
       
-      // Small delay to ensure localStorage is written
       setTimeout(() => {
         if (role === 'superadmin') {
-          window.location.reload(); // App.jsx will handle routing
+          window.location.reload();
         } else if (role === 'employee') {
-          window.location.reload(); // App.jsx will show employee interface
+          window.location.reload();
         } else {
-          window.location.reload(); // Default routing
+          window.location.reload();
         }
       }, 100);
 
@@ -69,124 +70,165 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 flex items-center justify-center p-4 relative">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10 z-0">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3Ccircle cx='27' cy='7' r='1'/%3E%3Ccircle cx='47' cy='7' r='1'/%3E%3Ccircle cx='7' cy='27' r='1'/%3E%3Ccircle cx='27' cy='27' r='1'/%3E%3Ccircle cx='47' cy='27' r='1'/%3E%3Ccircle cx='7' cy='47' r='1'/%3E%3Ccircle cx='27' cy='47' r='1'/%3E%3Ccircle cx='47' cy='47' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }}></div>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-orange-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Floating Circles */}
+        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-green-400/20 to-emerald-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-orange-400/20 to-amber-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-blue-400/10 to-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+        
+        {/* Animated Grid Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="grid grid-cols-12 gap-4 h-full animate-pulse">
+            {Array.from({length: 144}).map((_, i) => (
+              <div key={i} className="bg-gradient-to-br from-green-500 to-orange-500 rounded-full" style={{
+                animationDelay: `${i * 0.1}s`,
+                animation: 'pulse 3s infinite'
+              }}></div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Login Container */}
-      <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-12 text-center">
-            <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
-              <LogIn className="w-10 h-10 text-white" />
+      <div className={`w-full max-w-md relative z-10 transform transition-all duration-1000 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        {/* Logo dan Header dengan Animasi */}
+        <div className="text-center mb-8">
+          <div className="mb-6 group">
+            <div className={`w-28 h-28 mx-auto bg-white rounded-3xl shadow-2xl flex items-center justify-center transform transition-all duration-700 hover:scale-110 hover:rotate-3 hover:shadow-3xl ${mounted ? 'scale-100 rotate-0' : 'scale-75 -rotate-12'}`}>
+              <div className="relative">
+                <img 
+                  src="\src\assets\image.png" 
+                  alt="Logo BPS Kota Malang" 
+                  className="w-20 h-20 object-contain transition-all duration-300 group-hover:scale-110" 
+                />
+                {/* Glow Effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-orange-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Selamat Datang</h1>
-            <p className="text-blue-100 text-lg">Sistem Manajemen Data & Pelabelan</p>
           </div>
-
-          <div className="px-8 py-10">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500" />
-                <p className="text-red-700 text-sm">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    name="username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Masukkan username Anda"
-                    disabled={loading}
-                    autoComplete="username"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-4 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Masukkan password Anda"
-                    disabled={loading}
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 focus:ring-4 focus:ring-blue-500/50 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Memproses...
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="w-5 h-5" />
-                    Masuk
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="mt-8 pt-6 border-t border-gray-100 text-center space-y-3">
-              <p className="text-sm text-gray-600">
-                Belum memiliki akun? Hubungi administrator untuk pendaftaran.
-              </p>
-              <div className="flex flex-wrap justify-center gap-6 text-xs text-gray-500">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <span>Superadmin: Full Access</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <span>Employee: Pelabelan</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                  <span>Kepala BPS: Monitoring</span>
-                </div>
-              </div>
-            </div>
+          
+          <div className={`transform transition-all duration-1000 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'}`} style={{transitionDelay: '300ms'}}>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-orange-600 bg-clip-text text-transparent mb-2 hover:scale-105 transition-transform duration-300">
+              BPS KOTA MALANG
+            </h1>
+            <p className="text-gray-600 text-lg animate-fade-in">Sistem Manajemen Data & Pelabelan</p>
           </div>
         </div>
 
-        {/* Additional Visual Elements */}
-        <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full opacity-20 blur-xl"></div>
-        <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full opacity-20 blur-xl"></div>
+        {/* Form Login dengan Glassmorphism */}
+        <div className={`backdrop-blur-2xl bg-white/80 border border-white/50 rounded-3xl shadow-2xl p-8 transform transition-all duration-1000 hover:shadow-3xl hover:bg-white/90 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`} style={{transitionDelay: '600ms'}}>
+          {error && (
+            <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-2xl flex items-center gap-3 animate-shake">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          <div className="space-y-6">
+            <div className="group">
+              <label className="block text-sm font-semibold text-gray-700 mb-3 group-focus-within:text-green-600 transition-colors duration-200">
+                Username
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors duration-200 group-focus-within:text-green-500">
+                  <User className="h-5 w-5 text-gray-400 group-focus-within:text-green-500" />
+                </div>
+                <input
+                  type="text"
+                  name="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 border border-gray-200/50 rounded-2xl bg-white/50 backdrop-blur-sm text-gray-900 focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 focus:bg-white/80 transition-all duration-300 hover:shadow-lg hover:bg-white/70"
+                  placeholder="Masukkan username"
+                  disabled={loading}
+                  autoComplete="username"
+                />
+              </div>
+            </div>
+
+            <div className="group">
+              <label className="block text-sm font-semibold text-gray-700 mb-3 group-focus-within:text-green-600 transition-colors duration-200">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors duration-200 group-focus-within:text-green-500">
+                  <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-green-500" />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-12 pr-12 py-4 border border-gray-200/50 rounded-2xl bg-white/50 backdrop-blur-sm text-gray-900 focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 focus:bg-white/80 transition-all duration-300 hover:shadow-lg hover:bg-white/70"
+                  placeholder="Masukkan password"
+                  disabled={loading}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:scale-110"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogin}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-green-600 via-emerald-600 to-orange-500 text-white py-4 rounded-2xl font-semibold text-lg shadow-xl hover:shadow-2xl focus:ring-4 focus:ring-green-500/50 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3 transform hover:scale-105 hover:-translate-y-1 active:scale-95"
+            >
+              {loading ? (
+                <>
+                  <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span className="animate-pulse">Memproses...</span>
+                </>
+              ) : (
+                <>
+                  <span className="relative">
+                    Masuk
+                    <div className="absolute inset-0 bg-white/20 rounded-lg blur-sm opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-gray-200/50">
+            <p className="text-center text-sm text-gray-600 mb-4 animate-fade-in">
+              Belum memiliki akun? Hubungi administrator.
+            </p>
+            
+          </div>
+        </div>
+
+        {/* Footer dengan Animasi */}
+        <div className={`text-center mt-8 transform transition-all duration-1000 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'}`} style={{transitionDelay: '900ms'}}>
+          <p className="text-sm text-gray-500 hover:text-gray-700 transition-colors duration-200">
+            © 2024 BPS Kota Malang. All rights reserved.
+          </p>
+        </div>
       </div>
+
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out;
+        }
+      `}</style>
     </div>
   );
 };

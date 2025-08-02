@@ -9,6 +9,7 @@ from ..models import MatchingJob, LabelingData
 from ..services.match_engine import MatchingEngine
 import uuid
 import logging
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 logger = logging.getLogger(__name__)
@@ -256,20 +257,56 @@ class GetLabelingDataView(APIView):
     def get(self, request):
         try:
             user = request.user
+            
+            # Get pagination parameters
+            page = request.GET.get('page', 1)
+            limit = request.GET.get('limit', 10)
+            
+            try:
+                page = int(page)
+                limit = int(limit)
+            except (ValueError, TypeError):
+                page = 1
+                limit = 10
+            
+            # Ensure reasonable limits
+            if limit > 100:  # Max 100 items per page
+                limit = 100
+            if limit < 1:
+                limit = 10
 
             # Jika superadmin, tampilkan semua
             if user.is_superuser:
-                unlabeled = LabelingData.objects.filter(label__isnull=True)
+                unlabeled = LabelingData.objects.filter(label__isnull=True).order_by('-created_at')
             else:
                 # Jika employee biasa, filter berdasarkan dirinya
                 unlabeled = LabelingData.objects.filter(
                     employee=user,
                     label__isnull=True
-                )
+                ).order_by('-created_at')
+
+            # Apply pagination
+            paginator = Paginator(unlabeled, limit)
+            total_count = paginator.count
+            total_pages = paginator.num_pages
+            
+            try:
+                page_obj = paginator.page(page)
+            except PageNotAnInteger:
+                page_obj = paginator.page(1)
+                page = 1
+            except EmptyPage:
+                page_obj = paginator.page(paginator.num_pages)
+                page = paginator.num_pages
 
             return Response({
-                'unlabeled_data': list(unlabeled.values()),
-                'total_count': unlabeled.count()
+                'unlabeled_data': list(page_obj.object_list.values()),
+                'total_count': total_count,
+                'total_pages': total_pages,
+                'current_page': page,
+                'items_per_page': limit,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous()
             })
 
         except Exception as e:

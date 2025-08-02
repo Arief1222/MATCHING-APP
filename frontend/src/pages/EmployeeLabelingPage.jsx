@@ -193,11 +193,11 @@ const EmployeeLabelingPage = () => {
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg">
         {/* Header */}
-        <div className="p-6 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+        <div className="p-6 border-b bg-gradient-to-r from-white to-white text-black rounded-t-lg">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold mb-2">Data Labeling Dashboard</h1>
-              <p className="text-blue-100">
+              <p className="text-black">
                 Selamat datang, {employeeInfo.username || 'Employee'}
               </p>
             </div>

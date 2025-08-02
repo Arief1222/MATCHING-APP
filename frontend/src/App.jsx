@@ -17,7 +17,7 @@ import LoginPage from "./pages/LoginPage";
 import EmployeeLabelingPage from "./pages/EmployeeLabelingPage"; // Import new employee page
 
 function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeMenu, setActiveMenu] = useState("upload");
   const [selectedTable, setSelectedTable] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -27,12 +27,12 @@ function App() {
 
   const handleTableSelect = (table) => {
     setSelectedTable(table);
-    setSidebarOpen(false);
+    setSidebarOpen(true);
   };
 
   const handleMenuSelect = (menu) => {
     setActiveMenu(menu);
-    setSidebarOpen(false);
+    setSidebarOpen(true);
   };
 
   // Get token and user info from localStorage
