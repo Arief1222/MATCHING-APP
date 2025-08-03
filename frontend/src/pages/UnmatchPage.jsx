@@ -1,9 +1,8 @@
-// Perubahan untuk frontend/src/pages/MatchingResult.jsx
-
+// Fixed Frontend Component - MatchingResult.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, Filter, Download, Eye, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, Download, Eye, RefreshCw, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 
-// OPTIMASI: Memoized Detail Modal
+// Memoized Detail Modal
 const DetailModal = React.memo(({ resultId, onClose }) => {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,9 +16,18 @@ const DetailModal = React.memo(({ resultId, onClose }) => {
   const fetchResultDetail = async (id) => {
     setLoading(true);
     try {
+      const token = localStorage.getItem("token");
       const response = await fetch(`http://127.0.0.1:8001/match-result-detail/${id}/`, {
-        headers: getAuthHeaders()
+        headers: {
+          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       setResult(data.result);
     } catch (error) {
@@ -60,6 +68,7 @@ const DetailModal = React.memo(({ resultId, onClose }) => {
             <div>
               <h4 className="font-medium text-gray-900 mb-2">Basic Information</h4>
               <div className="space-y-2 text-sm">
+                <div><strong>ID:</strong> {result.id}</div>
                 <div><strong>Batch ID:</strong> {result.batch_id}</div>
                 <div><strong>Source Table:</strong> {result.source_table}</div>
                 <div><strong>Reference Table:</strong> {result.reference_table}</div>
@@ -112,8 +121,9 @@ const MatchResultsPage = () => {
   });
 
   const [selectedResultId, setSelectedResultId] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
-  // OPTIMASI: Memoized auth headers
+  // Auth headers helper
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem("token");
     return {
@@ -122,7 +132,7 @@ const MatchResultsPage = () => {
     };
   }, []);
 
-  // OPTIMASI: Separate categories fetch
+  // Fetch categories
   const fetchCategories = useCallback(async () => {
     setCategoriesLoading(true);
     try {
@@ -130,24 +140,35 @@ const MatchResultsPage = () => {
       const response = await fetch(`http://127.0.0.1:8001/categories/?${params}`, {
         headers: getAuthHeaders()
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       setCategories(data.categories || {});
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategories({});
     } finally {
       setCategoriesLoading(false);
     }
   }, [filters.status, getAuthHeaders]);
 
-  // OPTIMASI: Debounced fetch results
+  // Fetch results
   const fetchResults = useCallback(async () => {
     setLoading(true);
     try {
+      // FIX: Clean filters - remove empty values
+      const cleanFilters = Object.fromEntries(
+        Object.entries(filters).filter(([_, value]) => value !== '')
+      );
+      
       const params = new URLSearchParams({
         page: currentPage,
         page_size: 20,
-        include_categories: 'false', // Don't include categories in main query
-        ...filters
+        include_categories: 'false',
+        ...cleanFilters
       });
       
       const response = await fetch(`http://127.0.0.1:8001/categorized-results/?${params}`, {
@@ -165,61 +186,121 @@ const MatchResultsPage = () => {
     } catch (error) {
       console.error('Error fetching results:', error);
       setResults([]);
+      setTotalCount(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   }, [currentPage, filters, getAuthHeaders]);
 
-  // OPTIMASI: Load categories only once per status change
+  // Load categories only once per status change
   useEffect(() => {
     fetchCategories();
   }, [filters.status]);
 
-  // OPTIMASI: Load results when dependencies change
+  // Load results when dependencies change
   useEffect(() => {
     fetchResults();
   }, [fetchResults]);
 
-  // OPTIMASI: Memoized filter handler
+  // Filter change handler
   const handleFilterChange = useCallback((key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setCurrentPage(1);
   }, []);
 
-  // OPTIMASI: Memoized page change
+  // Page change handler
   const handlePageChange = useCallback((newPage) => {
     setCurrentPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // OPTIMASI: Memoized view details
+  // View details handler
   const handleViewDetails = useCallback((resultId) => {
     setSelectedResultId(resultId);
   }, []);
 
-  // OPTIMASI: Memoized export
+  // FIX: Export handler with proper error handling
   const handleExport = useCallback(async (format = 'excel') => {
+    setExportLoading(true);
     try {
+      // Clean filters for export
+      const exportFilters = Object.fromEntries(
+        Object.entries(filters).filter(([_, value]) => value !== '')
+      );
+      
       const response = await fetch('http://127.0.0.1:8001/export-categorized/', {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ ...filters, format })
+        body: JSON.stringify({ 
+          ...exportFilters, 
+          format: format 
+        })
       });
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${filters.status.toLowerCase()}_results.${format === 'excel' ? 'xlsx' : 'csv'}`;
-        a.click();
-        window.URL.revokeObjectURL(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filters.status.toLowerCase()}_results_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exporting:', error);
+      alert(`Export failed: ${error.message}`);
+    } finally {
+      setExportLoading(false);
     }
   }, [filters, getAuthHeaders]);
 
-  // OPTIMASI: Memoized utility functions
+  // FIX: Export all data handler
+  const handleExportAll = useCallback(async (format = 'excel') => {
+    setExportLoading(true);
+    try {
+      // Don't include status filter for "all" export
+      const exportFilters = Object.fromEntries(
+        Object.entries(filters).filter(([key, value]) => key !== 'status' && value !== '')
+      );
+      
+      const response = await fetch('http://127.0.0.1:8001/export-all/', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ 
+          ...exportFilters, 
+          format: format 
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `all_matching_results_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting all:', error);
+      alert(`Export failed: ${error.message}`);
+    } finally {
+      setExportLoading(false);
+    }
+  }, [filters, getAuthHeaders]);
+
+  // Utility functions
   const getConfidenceColor = useMemo(() => (score) => {
     if (score >= 0.8) return 'text-green-600 bg-green-100';
     if (score >= 0.6) return 'text-yellow-600 bg-yellow-100';
@@ -235,7 +316,7 @@ const MatchResultsPage = () => {
     }
   }, []);
 
-  // OPTIMASI: Memoized summary stats
+  // Summary stats
   const summaryStats = useMemo(() => ({
     tableCombinations: categories.unique_source_tables?.length || 0,
     algorithms: categories.unique_algorithms?.length || 0,
@@ -248,14 +329,14 @@ const MatchResultsPage = () => {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          {filters.status === 'MATCH' ? 'Match' : 'Unmatch'} Results
+          {filters.status === 'MATCH' ? 'Match' : filters.status === 'UNMATCH' ? 'Unmatch' : 'Enriched'} Results
         </h1>
         <p className="text-gray-600">
           View and manage {filters.status.toLowerCase()} results from data matching processes
         </p>
       </div>
 
-      {/* OPTIMASI: Memoized Summary Cards */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg border shadow-sm">
           <div className="text-2xl font-bold text-blue-600">{summaryStats.tableCombinations}</div>
@@ -275,14 +356,14 @@ const MatchResultsPage = () => {
         </div>
       </div>
 
-      {/* OPTIMASI: Simplified Filters */}
+      {/* Filters */}
       <div className="bg-white p-4 rounded-lg border shadow-sm mb-6">
         <div className="flex items-center gap-4 mb-4">
           <Filter className="h-5 w-5 text-gray-500" />
           <h3 className="font-medium text-gray-900">Filters</h3>
           <button 
             onClick={() => setFilters(prev => ({ 
-              ...prev, 
+              status: prev.status, // Keep status
               batch_id: '', 
               source_table: '', 
               reference_table: '', 
@@ -294,7 +375,7 @@ const MatchResultsPage = () => {
           </button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Status Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -325,22 +406,6 @@ const MatchResultsPage = () => {
             </select>
           </div>
 
-          {/* Algorithm Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Algorithm</label>
-            <select
-              value={filters.algorithm}
-              onChange={(e) => handleFilterChange('algorithm', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={categoriesLoading}
-            >
-              <option value="">All Algorithms</option>
-              {categories.unique_algorithms?.map(algo => (
-                <option key={algo} value={algo}>{algo}</option>
-              ))}
-            </select>
-          </div>
-
           {/* Source Table Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Source Table</label>
@@ -353,6 +418,38 @@ const MatchResultsPage = () => {
               <option value="">All Sources</option>
               {categories.unique_source_tables?.map(table => (
                 <option key={table} value={table}>{table}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Reference Table Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Reference Table</label>
+            <select
+              value={filters.reference_table}
+              onChange={(e) => handleFilterChange('reference_table', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={categoriesLoading}
+            >
+              <option value="">All References</option>
+              {categories.unique_reference_tables?.map(table => (
+                <option key={table} value={table}>{table}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Algorithm Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Algorithm</label>
+            <select
+              value={filters.algorithm}
+              onChange={(e) => handleFilterChange('algorithm', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={categoriesLoading}
+            >
+              <option value="">All Algorithms</option>
+              {categories.unique_algorithms?.map(algo => (
+                <option key={algo} value={algo}>{algo}</option>
               ))}
             </select>
           </div>
@@ -370,13 +467,65 @@ const MatchResultsPage = () => {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          <button
-            onClick={() => handleExport('excel')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-          >
-            <Download className="h-4 w-4" />
-            Export Excel
-          </button>
+          
+          {/* Export Current Filter */}
+          <div className="relative group">
+            <button
+              onClick={() => handleExport('excel')}
+              disabled={exportLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              {exportLoading ? 'Exporting...' : 'Export Current'}
+            </button>
+            
+            {/* Dropdown for export options */}
+            <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+              <button
+                onClick={() => handleExport('excel')}
+                disabled={exportLoading}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Export Current (Excel)
+              </button>
+              <button
+                onClick={() => handleExport('csv')}
+                disabled={exportLoading}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Export Current (CSV)
+              </button>
+            </div>
+          </div>
+
+          {/* Export All Data */}
+          <div className="relative group">
+            <button
+              onClick={() => handleExportAll('excel')}
+              disabled={exportLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+            >
+              <FileText className="h-4 w-4" />
+              {exportLoading ? 'Exporting...' : 'Export All'}
+            </button>
+            
+            <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+              <button
+                onClick={() => handleExportAll('excel')}
+                disabled={exportLoading}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Export All (Excel)
+              </button>
+              <button
+                onClick={() => handleExportAll('csv')}
+                disabled={exportLoading}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Export All (CSV)
+              </button>
+            </div>
+          </div>
         </div>
         
         <div className="text-sm text-gray-600">
@@ -384,7 +533,7 @@ const MatchResultsPage = () => {
         </div>
       </div>
 
-      {/* OPTIMASI: Simplified Results Table */}
+      {/* Results Table */}
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -402,6 +551,7 @@ const MatchResultsPage = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Algorithm</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Confidence</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -444,10 +594,14 @@ const MatchResultsPage = () => {
                           {result.status}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(result.created_at).toLocaleDateString('id-ID')}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
                           onClick={() => handleViewDetails(result.id)}
                           className="text-blue-600 hover:text-blue-900"
+                          title="View Details"
                         >
                           <Eye className="h-4 w-4" />
                         </button>
@@ -458,53 +612,65 @@ const MatchResultsPage = () => {
               </table>
             </div>
 
-            {/* OPTIMASI: Enhanced Pagination */}
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-700">
-                Showing {((currentPage - 1) * 20) + 1} to {Math.min(currentPage * 20, totalCount)} of {totalCount} results
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </button>
-                
-                {/* Page numbers */}
-                <div className="flex gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum = Math.max(1, currentPage - 2) + i;
-                    if (pageNum > totalPages) return null;
-                    
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 py-1 border rounded-md text-sm transition-colors ${
-                          pageNum === currentPage 
-                            ? 'bg-blue-600 text-white border-blue-600' 
-                            : 'border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
+            {/* Enhanced Pagination */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing {((currentPage - 1) * 20) + 1} to {Math.min(currentPage * 20, totalCount)} of {totalCount} results
                 </div>
-                
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </button>
+                  
+                  {/* Page numbers */}
+                  <div className="flex gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNum = Math.max(1, currentPage - 2) + i;
+                      if (pageNum > totalPages) return null;
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`px-3 py-1 border rounded-md text-sm transition-colors ${
+                            pageNum === currentPage 
+                              ? 'bg-blue-600 text-white border-blue-600' 
+                              : 'border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* No results message */}
+            {!loading && results.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-gray-500 text-lg mb-2">No results found</div>
+                <div className="text-gray-400 text-sm">
+                  Try adjusting your filters or check if there's data in the database
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

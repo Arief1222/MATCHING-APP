@@ -3,7 +3,9 @@ from rest_framework.authtoken.views import obtain_auth_token
 # Import semua view dari folder views
 from .views import (
     BulkTableOperationsView,
+    ExportAllResultsView,
     ExportCategorizedResultsView,
+    GetAllMatchingResultsView, GetCategoriesView, GetMatchResultDetailView,
     GetCategorizedMatchResultsView,
     GetMatchingSummaryView,
     JobStatusView,
@@ -83,6 +85,14 @@ urlpatterns = [
     path('categorized-results/', GetCategorizedMatchResultsView.as_view(), name='categorized_match_results'),
     path('matching-summary/', GetMatchingSummaryView.as_view(), name='matching_summary'),
     path('export-categorized/', ExportCategorizedResultsView.as_view(), name='export_categorized'),
+    path('categories/', GetCategoriesView.as_view(), name='categories'),
+    path('match-result-detail/<int:result_id>/', GetMatchResultDetailView.as_view(), name='match-result-detail'),
+    path('matching-summary/', GetMatchingSummaryView.as_view(), name='matching-summary'),
+    path('all-results/', GetAllMatchingResultsView.as_view(), name='all-results'),
+    
+    # Export URLs
+    path('export-categorized/', ExportCategorizedResultsView.as_view(), name='export-categorized'),
+    path('export-all/', ExportAllResultsView.as_view(), name='export-all'),
     
     # User Management Views
     path('users/', UserManagementView.as_view(), name='user_management'),

@@ -1,7 +1,9 @@
+# backend/api/views/matching_result_views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from ..models import MatchingResult, LabelingData
 from django.db import models
+from django.db.models import Q
 import logging
 
 
@@ -118,6 +120,16 @@ class GetCategorizedMatchResultsView(APIView):
             # OPTIMASI: Batch serialize tanpa loop individual
             serialized_results = []
             for result in results:
+                # FIX: Pastikan confidence_score ditampilkan dengan benar
+                confidence_score = result.confidence_score
+                if confidence_score is None:
+                    confidence_score = 0.0
+                elif isinstance(confidence_score, str):
+                    try:
+                        confidence_score = float(confidence_score)
+                    except (ValueError, TypeError):
+                        confidence_score = 0.0
+                
                 # Minimal data untuk table view
                 serialized_results.append({
                     'id': result.id,
@@ -125,7 +137,7 @@ class GetCategorizedMatchResultsView(APIView):
                     'source_table': result.source_table,
                     'reference_table': result.reference_table,
                     'matching_algorithm': result.matching_algorithm,
-                    'confidence_score': float(result.confidence_score) if result.confidence_score else 0,
+                    'confidence_score': confidence_score,  # FIX: Pastikan ini float
                     'created_at': result.created_at.isoformat(),
                     'status': result.status,
                     'matching_type': 'Self Match' if result.source_table == result.reference_table else 'Cross Match',
@@ -160,8 +172,49 @@ class GetCategorizedMatchResultsView(APIView):
             logger.error(f"Error in GetCategorizedMatchResultsView: {e}", exc_info=True)
             return Response({'error': str(e)}, status=500)
 
+    def get_categories(self, status_filter):
+        """Optimized categories query"""
+        try:
+            # OPTIMASI: Query dengan agregasi yang lebih efisien
+            unique_combinations = MatchingResult.objects.filter(
+                status=status_filter
+            ).values(
+                'batch_id', 'source_table', 'reference_table', 'matching_algorithm'
+            ).annotate(
+                count=models.Count('id'),
+                avg_confidence=models.Avg('confidence_score'),
+                latest_date=models.Max('created_at')
+            ).order_by('-latest_date')[:50]  # Limit untuk performa
+            
+            # Simplified processing
+            algorithms = set()
+            batch_ids = set()
+            source_tables = set()
+            reference_tables = set()
+            
+            for combo in unique_combinations:
+                if combo['matching_algorithm']:
+                    algorithms.add(combo['matching_algorithm'])
+                if combo['batch_id']:
+                    batch_ids.add(combo['batch_id'])
+                if combo['source_table']:
+                    source_tables.add(combo['source_table'])
+                if combo['reference_table']:
+                    reference_tables.add(combo['reference_table'])
+            
+            return {
+                'unique_algorithms': sorted(list(algorithms)),
+                'unique_batch_ids': sorted(list(batch_ids), reverse=True)[:20],  # Latest 20 only
+                'unique_source_tables': sorted(list(source_tables)),
+                'unique_reference_tables': sorted(list(reference_tables))
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting categories: {e}", exc_info=True)
+            return {}
 
-# TAMBAHAN: View terpisah untuk mendapatkan categories saja
+
+# FIX: View terpisah untuk mendapatkan categories saja
 class GetCategoriesView(APIView):
     """View terpisah untuk mendapatkan filter categories"""
     
@@ -186,7 +239,7 @@ class GetCategoriesView(APIView):
                 count=models.Count('id'),
                 avg_confidence=models.Avg('confidence_score'),
                 latest_date=models.Max('created_at')
-            ).order_by('-latest_date')[:50]  # Limit untuk performa
+            ).order_by('-latest_date')[:100]  # Increase limit
             
             # Simplified processing
             algorithms = set()
@@ -195,14 +248,18 @@ class GetCategoriesView(APIView):
             reference_tables = set()
             
             for combo in unique_combinations:
-                algorithms.add(combo['matching_algorithm'])
-                batch_ids.add(combo['batch_id'])
-                source_tables.add(combo['source_table'])
-                reference_tables.add(combo['reference_table'])
+                if combo['matching_algorithm']:
+                    algorithms.add(combo['matching_algorithm'])
+                if combo['batch_id']:
+                    batch_ids.add(combo['batch_id'])
+                if combo['source_table']:
+                    source_tables.add(combo['source_table'])
+                if combo['reference_table']:
+                    reference_tables.add(combo['reference_table'])
             
             return {
                 'unique_algorithms': sorted(list(algorithms)),
-                'unique_batch_ids': sorted(list(batch_ids), reverse=True)[:20],  # Latest 20 only
+                'unique_batch_ids': sorted(list(batch_ids), reverse=True)[:50],  # Increase limit
                 'unique_source_tables': sorted(list(source_tables)),
                 'unique_reference_tables': sorted(list(reference_tables))
             }
@@ -220,6 +277,16 @@ class GetMatchResultDetailView(APIView):
         try:
             result = MatchingResult.objects.get(id=result_id)
             
+            # FIX: Pastikan confidence_score ditampilkan dengan benar
+            confidence_score = result.confidence_score
+            if confidence_score is None:
+                confidence_score = 0.0
+            elif isinstance(confidence_score, str):
+                try:
+                    confidence_score = float(confidence_score)
+                except (ValueError, TypeError):
+                    confidence_score = 0.0
+            
             detail_data = {
                 'id': result.id,
                 'batch_id': result.batch_id,
@@ -227,7 +294,7 @@ class GetMatchResultDetailView(APIView):
                 'reference_table': result.reference_table,
                 'matching_algorithm': result.matching_algorithm,
                 'matched_data': result.matched_data,  # Full data untuk detail
-                'confidence_score': float(result.confidence_score) if result.confidence_score else 0,
+                'confidence_score': confidence_score,  # FIX: Pastikan ini float
                 'created_at': result.created_at.isoformat(),
                 'status': result.status,
                 'matching_type': 'Self Match' if result.source_table == result.reference_table else 'Cross Match'
@@ -326,4 +393,87 @@ class GetMatchingSummaryView(APIView):
             
         except Exception as e:
             logger.error(f"Error in GetMatchingSummaryView: {e}", exc_info=True)
+            return Response({'error': str(e)}, status=500)
+
+
+# FIX: Add missing view for all results without filters
+class GetAllMatchingResultsView(APIView):
+    """View untuk mendapatkan semua hasil matching tanpa filter status"""
+    
+    def get(self, request):
+        try:
+            # Parameter filter
+            batch_id = request.query_params.get('batch_id')
+            source_table = request.query_params.get('source_table')
+            reference_table = request.query_params.get('reference_table')
+            algorithm = request.query_params.get('algorithm')
+            status = request.query_params.get('status')  # Optional status filter
+            page = int(request.query_params.get('page', 1))
+            page_size = min(int(request.query_params.get('page_size', 50)), 200)  # Increase default
+            
+            # Base query - tidak filter status secara default
+            query = MatchingResult.objects.all()
+            
+            # Apply filters
+            if batch_id:
+                query = query.filter(batch_id=batch_id)
+            if source_table:
+                query = query.filter(source_table=source_table)
+            if reference_table:
+                query = query.filter(reference_table=reference_table)
+            if algorithm:
+                query = query.filter(matching_algorithm=algorithm)
+            if status:
+                query = query.filter(status=status.upper())
+            
+            # Count and pagination
+            total_count = query.count()
+            offset = (page - 1) * page_size
+            results = query.order_by('-id')[offset:offset + page_size]
+            
+            # Serialize results
+            serialized_results = []
+            for result in results:
+                confidence_score = result.confidence_score
+                if confidence_score is None:
+                    confidence_score = 0.0
+                elif isinstance(confidence_score, str):
+                    try:
+                        confidence_score = float(confidence_score)
+                    except (ValueError, TypeError):
+                        confidence_score = 0.0
+                
+                serialized_results.append({
+                    'id': result.id,
+                    'batch_id': result.batch_id,
+                    'source_table': result.source_table,
+                    'reference_table': result.reference_table,
+                    'matching_algorithm': result.matching_algorithm,
+                    'confidence_score': confidence_score,
+                    'created_at': result.created_at.isoformat(),
+                    'status': result.status,
+                    'matching_type': 'Self Match' if result.source_table == result.reference_table else 'Cross Match',
+                })
+            
+            return Response({
+                'results': serialized_results,
+                'pagination': {
+                    'page': page,
+                    'page_size': page_size,
+                    'total_count': total_count,
+                    'total_pages': (total_count + page_size - 1) // page_size,
+                    'has_next': page * page_size < total_count,
+                    'has_prev': page > 1
+                },
+                'filters_applied': {
+                    'batch_id': batch_id,
+                    'source_table': source_table,
+                    'reference_table': reference_table,
+                    'algorithm': algorithm,
+                    'status': status
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in GetAllMatchingResultsView: {e}", exc_info=True)
             return Response({'error': str(e)}, status=500)

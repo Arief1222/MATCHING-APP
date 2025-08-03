@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { LogOut } from "lucide-react"; // TAMBAH IMPORT INI
 
 // Components
 import Header from "./components/Header";
@@ -22,6 +23,7 @@ function App() {
   const [selectedTable, setSelectedTable] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false); // TAMBAH STATE INI
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -33,6 +35,17 @@ function App() {
   const handleMenuSelect = (menu) => {
     setActiveMenu(menu);
     setSidebarOpen(true);
+  };
+
+  // TAMBAH FUNGSI LOGOUT
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/";
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(true);
   };
 
   // Get token and user info from localStorage
@@ -120,7 +133,8 @@ function App() {
       onTableSelect: handleTableSelect,
       onMenuSelect: handleMenuSelect,
       activeMenu: activeMenu,
-      userRole: userRole
+      userRole: userRole,
+      onLogout: confirmLogout // TAMBAH PROP INI
     };
   };
 
@@ -141,6 +155,40 @@ function App() {
           <ToastContainer position="top-right" autoClose={3000} />
         </div>
       </div>
+
+      {/* TAMBAH MODAL LOGOUT DI SINI */}
+      {showLogoutModal && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100]" 
+            onClick={() => setShowLogoutModal(false)} 
+          />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl z-[101] w-96 max-w-[90vw]">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+                <LogOut className="w-8 h-8 text-red-600" />
+              </div>
+              <p className="text-gray-600 text-center mb-6">
+                Apakah Anda yakin ingin keluar dari aplikasi?
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors duration-200"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors duration-200"
+                >
+                  Ya, Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

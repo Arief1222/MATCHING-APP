@@ -125,7 +125,8 @@ const LoginPage = () => {
             </div>
           )}
 
-          <div className="space-y-6">
+          {/* FORM ELEMENT - BUNGKUS DENGAN FORM */}
+          <form onSubmit={handleLogin} className="space-y-6">
             <div className="group">
               <label className="block text-sm font-semibold text-gray-700 mb-3 group-focus-within:text-green-600 transition-colors duration-200">
                 Username
@@ -143,6 +144,7 @@ const LoginPage = () => {
                   placeholder="Masukkan username"
                   disabled={loading}
                   autoComplete="username"
+                  required
                 />
               </div>
             </div>
@@ -164,11 +166,13 @@ const LoginPage = () => {
                   placeholder="Masukkan password"
                   disabled={loading}
                   autoComplete="current-password"
+                  required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-all duration-200 hover:scale-110"
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -176,38 +180,37 @@ const LoginPage = () => {
             </div>
 
             <button
-              onClick={handleLogin}
+              type="submit"
               disabled={loading}
               className="w-full bg-gradient-to-r from-green-600 via-emerald-600 to-orange-500 text-white py-4 rounded-2xl font-semibold text-lg shadow-xl hover:shadow-2xl focus:ring-4 focus:ring-green-500/50 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3 transform hover:scale-105 hover:-translate-y-1 active:scale-95"
             >
               {loading ? (
                 <>
                   <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span className="animate-pulse">Memproses...</span>
+                  <span className="animate-pulse">Loading...</span>
                 </>
               ) : (
                 <>
                   <span className="relative">
-                    Masuk
+                    Login
                     <div className="absolute inset-0 bg-white/20 rounded-lg blur-sm opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
                   </span>
                 </>
               )}
             </button>
-          </div>
+          </form>
 
           <div className="mt-8 pt-6 border-t border-gray-200/50">
             <p className="text-center text-sm text-gray-600 mb-4 animate-fade-in">
               Belum memiliki akun? Hubungi administrator.
             </p>
-            
           </div>
         </div>
 
         {/* Footer dengan Animasi */}
         <div className={`text-center mt-8 transform transition-all duration-1000 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'}`} style={{transitionDelay: '900ms'}}>
           <p className="text-sm text-gray-500 hover:text-gray-700 transition-colors duration-200">
-            © 2024 BPS Kota Malang. All rights reserved.
+            © 2025 BPS Kota Malang. All rights reserved.
           </p>
         </div>
       </div>

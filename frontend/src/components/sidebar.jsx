@@ -10,6 +10,7 @@ import {
   FileText,
   LogOut,
   User,
+  // HAPUS onLogout dari sini - bukan icon lucide-react
 } from "lucide-react";
 
 const Sidebar = ({
@@ -19,6 +20,7 @@ const Sidebar = ({
   onMenuSelect,
   activeMenu,
   userRole,
+  onLogout, // TAMBAH PROP INI DI PARAMETER, BUKAN DI IMPORT
 }) => {
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -54,12 +56,6 @@ const Sidebar = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.href = "/";
   };
 
   // Define menu items based on user role
@@ -127,7 +123,7 @@ const Sidebar = ({
 
   if (!isOpen) return null;
 
-  return (
+   return (
     <>
       {/* Overlay for mobile */}
       <div
@@ -219,7 +215,7 @@ const Sidebar = ({
         {/* Footer */}
         <div className="px-8 py-6 border-t border-gray-100">
           <button
-            onClick={handleLogout}
+            onClick={onLogout} 
             className="w-full flex items-center space-x-3 px-4 py-3 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
           >
             <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100">
