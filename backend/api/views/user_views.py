@@ -5,16 +5,10 @@ from rest_framework.permissions import BasePermission
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User, Group
 from django.core.exceptions import ObjectDoesNotExist
-
-
-# Hanya Superadmin yang boleh akses view ini
-class IsSuperadmin(BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.groups.filter(name='superadmin').exists()
-
+from api.permission import IsSuperadminOrKepalaBpsReadOnly
 
 class UserManagementView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsSuperadmin]
+    permission_classes = [permissions.IsAuthenticated, IsSuperadminOrKepalaBpsReadOnly]
 
     def get(self, request):
         """

@@ -5,10 +5,10 @@ import { toast } from "react-toastify";
 import UploadFile from "../components/UploadFile";
 import TablesPage from "./TablesPage";
 
-const UploadPage = ({ 
+const UploadPage = ({
   getAuthHeaders,
   getAuthHeadersMultipart,
-  setLoading 
+  setLoading,
 }) => {
   const [file, setFile] = useState(null);
   const [tableName, setTableName] = useState("");
@@ -25,18 +25,15 @@ const UploadPage = ({
     setIsUploading(true);
     try {
       const headers = await getAuthHeadersMultipart();
-      const res = await axios.post(
-        "http://127.0.0.1:8001/upload/",
-        formData,
-        { headers }
-      );
+      const res = await axios.post("http://127.0.0.1:8001/upload/", formData, {
+        headers,
+      });
 
       toast.success(`File berhasil diupload ke tabel ${tableName}!`);
-      
+
       // Reset form setelah berhasil upload
       setFile(null);
       setTableName("");
-      
     } catch (err) {
       toast.error("Gagal upload file");
       console.error(err);
@@ -45,22 +42,23 @@ const UploadPage = ({
     }
   };
 
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        
-        <UploadFile
-          file={file}
-          setFile={setFile}
-          tableName={tableName}
-          setTableName={setTableName}
-          handleUpload={handleUpload}
-          isUploading={isUploading}
-        />
-        
-      </div>
- <TablesPage />
-     
+      {user.role === "superadmin" && (
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <UploadFile
+            file={file}
+            setFile={setFile}
+            tableName={tableName}
+            setTableName={setTableName}
+            handleUpload={handleUpload}
+            isUploading={isUploading}
+          />
+        </div>
+      )}
+      <TablesPage />
     </div>
   );
 };

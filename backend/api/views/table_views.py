@@ -96,7 +96,7 @@ class TableManagementView(APIView):
         Return the appropriate permissions based on HTTP method.
         """
         if self.request.method == 'GET':
-            return [IsAuthenticated(), IsKepalaBPS() | IsSuperadmin() | IsEmployee()]
+            return [IsAuthenticated()]
         else:
             # Selain GET, hanya superadmin dan employee yang diizinkan
             return [IsAuthenticated(), IsSuperadmin() | IsEmployee()]

@@ -16,11 +16,11 @@ from api.serializers import (
     EmployeeAssignmentSerializer,
     EmployeeSerializer
 )
-from ..permission import IsSuperadmin, IsEmployee
+from api.permission import IsSuperadminOrKepalaBpsReadOnly, IsEmployee, IsSuperadmin
 
 class AssignmentListCreateView(generics.ListCreateAPIView):
     queryset = Assignment.objects.all().order_by('-created_at')
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsSuperadminOrKepalaBpsReadOnly]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -89,7 +89,7 @@ class AssignmentListCreateView(generics.ListCreateAPIView):
 class AssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsSuperadmin]
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -112,7 +112,7 @@ class AssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 # MODIFIKASI: AssignmentStatusUpdateView - Hanya untuk Draft -> Sent & Cancellation
 class AssignmentStatusUpdateView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsSuperadmin]
 
     def patch(self, request, pk):
         """Admin hanya bisa mengubah status dari draft ke sent atau cancel assignment"""
