@@ -7,7 +7,7 @@
 ├── package-lock.json                ← File lock dependencies (auto-generated oleh npm)
 ├── package.json                     ← Metadata proyek, dependencies, dan script npm
 ├── public                           ← Folder untuk aset statis (tidak diproses oleh Vite)
-├── src                              ← 💻 Folder utama source code frontend React
+├── src                              ← Folder utama source code frontend React
 │   ├── App.css                      ← Styling untuk komponen `App`
 │   ├── App.jsx                      ← Root komponen React yang merender seluruh aplikasi
 │   ├── assets                       
