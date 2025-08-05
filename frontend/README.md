@@ -1,18 +1,18 @@
-#Struktur Folder Frontend#
+# Struktur Folder Frontend
 ```bash
-├── README.md                         ← Dokumentasi proyek
+├── README.md                        
 ├── eslint.config.js                 ← Konfigurasi linting JavaScript (ESLint)
 ├── index.html                       ← Template HTML utama, digunakan Vite saat build
-├── node_modules                     ← 📦 Folder dependency (DIABAIKAN saat dokumentasi)
+├── node_modules                     ←  Folder dependency 
 ├── package-lock.json                ← File lock dependencies (auto-generated oleh npm)
 ├── package.json                     ← Metadata proyek, dependencies, dan script npm
 ├── public                           ← Folder untuk aset statis (tidak diproses oleh Vite)
 ├── src                              ← 💻 Folder utama source code frontend React
 │   ├── App.css                      ← Styling untuk komponen `App`
 │   ├── App.jsx                      ← Root komponen React yang merender seluruh aplikasi
-│   ├── assets                       ← Folder untuk gambar/icon statis
-│   │   ├── image.png                ← Contoh aset gambar
-│   │   └── react.svg                ← Icon React (biasanya hanya contoh)
+│   ├── assets                       
+│   │   ├── image.png                
+│   │   └── react.svg                
 │   ├── components                   ← Komponen UI yang dapat digunakan ulang
 │   │   ├── ColumnSelector.jsx       ← Komponen untuk memilih kolom dari tabel
 │   │   ├── Header.jsx               ← Komponen header/navigation bar
