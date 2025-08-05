@@ -1,19 +1,41 @@
-# Cara Jalankan
-cd app
-
-npm install
-
-npm run dev
-
-# React + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+#Struktur Folder Frontend#
+```bash
+├── README.md                         ← Dokumentasi proyek
+├── eslint.config.js                 ← Konfigurasi linting JavaScript (ESLint)
+├── index.html                       ← Template HTML utama, digunakan Vite saat build
+├── node_modules                     ← 📦 Folder dependency (DIABAIKAN saat dokumentasi)
+├── package-lock.json                ← File lock dependencies (auto-generated oleh npm)
+├── package.json                     ← Metadata proyek, dependencies, dan script npm
+├── public                           ← Folder untuk aset statis (tidak diproses oleh Vite)
+├── src                              ← 💻 Folder utama source code frontend React
+│   ├── App.css                      ← Styling untuk komponen `App`
+│   ├── App.jsx                      ← Root komponen React yang merender seluruh aplikasi
+│   ├── assets                       ← Folder untuk gambar/icon statis
+│   │   ├── image.png                ← Contoh aset gambar
+│   │   └── react.svg                ← Icon React (biasanya hanya contoh)
+│   ├── components                   ← Komponen UI yang dapat digunakan ulang
+│   │   ├── ColumnSelector.jsx       ← Komponen untuk memilih kolom dari tabel
+│   │   ├── Header.jsx               ← Komponen header/navigation bar
+│   │   ├── JobHistoryTable.jsx      ← Komponen untuk menampilkan riwayat pekerjaan
+│   │   ├── MatchResultTable.jsx     ← Komponen untuk hasil pencocokan data
+│   │   ├── MatchingTypeSelector.jsx ← Komponen pemilih jenis matching
+│   │   ├── RecommendedColumns.jsx   ← Menampilkan kolom yang direkomendasikan
+│   │   ├── TableSelector.jsx        ← Komponen pemilih tabel
+│   │   ├── UploadFile.jsx           ← Komponen upload file ke backend
+│   │   └── sidebar.jsx              ← Sidebar navigasi/menu samping
+│   ├── hooks                        ← Folder untuk custom React hooks
+│   │   └── useMatchingLogic.js      ← Hook khusus untuk logika pencocokan (matching)
+│   ├── index.css                    ← CSS global untuk aplikasi
+│   ├── main.jsx                     ← Entry point aplikasi React, mounting `App.jsx` ke DOM
+│   └── pages                        ← Halaman utama aplikasi (dihubungkan oleh router)
+│       ├── AssignmentPage.jsx       ← Halaman untuk mengelola assignment
+│       ├── EmployeeLabelingPage.jsx← Halaman untuk labeling oleh karyawan
+│       ├── LabelingPage.jsx         ← Halaman untuk proses labeling data
+│       ├── LoginPage.jsx            ← Halaman login user
+│       ├── MatchPage.jsx            ← Halaman untuk hasil match data
+│       ├── MatchingPage.jsx         ← Halaman proses matching
+│       ├── TablesPage.jsx           ← Halaman menampilkan tabel-tabel dataset
+│       ├── UnmatchPage.jsx          ← Halaman untuk data yang tidak ter-match
+│       └── UploadPage.jsx           ← Halaman upload data/tabel baru
+├── vite.config.js                  ← Konfigurasi build dan plugin untuk Vite
+```
