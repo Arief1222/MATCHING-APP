@@ -65,7 +65,7 @@ Dokumentasi ini menjelaskan seluruh endpoint REST API yang tersedia pada sistem 
 
 | Method | Endpoint   | Deskripsi                        |
 |--------|------------|----------------------------------|
-| POST   | /login/    | Login dan ambil token autentikasi |
+| POST   | http://127.0.0.1:8001/login/    | Login dan ambil token autentikasi |
 
 ---
 
@@ -73,8 +73,8 @@ Dokumentasi ini menjelaskan seluruh endpoint REST API yang tersedia pada sistem 
 
 | Method      | Endpoint             | Deskripsi                           |
 |-------------|----------------------|-------------------------------------|
-| POST        | /upload/             | Mengunggah file                     |
-| GET / DELETE| /table-operations/   | Mengambil atau menghapus tabel file |
+| POST        | http://127.0.0.1:8001/upload/             | Mengunggah file                     |
+| GET / DELETE| http://127.0.0.1:8001/table-operations/   | Mengambil atau menghapus tabel file |
 
 ---
 
@@ -82,10 +82,10 @@ Dokumentasi ini menjelaskan seluruh endpoint REST API yang tersedia pada sistem 
 
 | Method | Endpoint                          | Deskripsi                            |
 |--------|-----------------------------------|--------------------------------------|
-| GET    | /tables/                          | Menampilkan daftar semua tabel       |
-| GET    | /tables/<table_name>/             | Detail tabel tertentu                |
-| DELETE | /tables/<table_name>/             | Menghapus tabel tertentu             |
-| DELETE | /tables/bulk/delete/              | Menghapus beberapa tabel sekaligus   |
+| GET    | http://127.0.0.1:8001/tables/                          | Menampilkan daftar semua tabel       |
+| GET    | http://127.0.0.1:8001/tables/<table_name>/             | Detail tabel tertentu                |
+| DELETE | http://127.0.0.1:8001/tables/<table_name>/             | Menghapus tabel tertentu             |
+| DELETE | http://127.0.0.1:8001/tables/bulk/delete/              | Menghapus beberapa tabel sekaligus   |
 
 ---
 
@@ -93,14 +93,14 @@ Dokumentasi ini menjelaskan seluruh endpoint REST API yang tersedia pada sistem 
 
 | Method | Endpoint                     | Deskripsi                                     |
 |--------|------------------------------|-----------------------------------------------|
-| GET    | /recommend-columns/          | Memberikan rekomendasi kolom yang cocok       |
-| POST   | /prepare-combined/           | Menyiapkan penggabungan kolom                 |
-| POST   | /start-matching/             | Memulai proses pencocokan                     |
-| GET    | /matching-jobs/              | Menampilkan daftar proses matching            |
-| GET    | /job-status/<job_id>/        | Melihat status dari job pencocokan tertentu   |
-| GET    | /labeling-data/              | Mengambil data untuk pelabelan manual         |
-| POST   | /submit-labeling/            | Mengirim hasil pelabelan manual               |
-| POST   | /retrain-model/              | Melatih ulang model pencocokan                |
+| GET    | http://127.0.0.1:8001/recommend-columns/          | Memberikan rekomendasi kolom yang cocok       |
+| POST   | http://127.0.0.1:8001/prepare-combined/           | Menyiapkan penggabungan kolom                 |
+| POST   | http://127.0.0.1:8001/start-matching/             | Memulai proses pencocokan                     |
+| GET    | http://127.0.0.1:8001/matching-jobs/              | Menampilkan daftar proses matching            |
+| GET    | http://127.0.0.1:8001/job-status/<job_id>/        | Melihat status dari job pencocokan tertentu   |
+| GET    | http://127.0.0.1:8001/labeling-data/              | Mengambil data untuk pelabelan manual         |
+| POST   | http://127.0.0.1:8001/submit-labeling/            | Mengirim hasil pelabelan manual               |
+| POST   | http://127.0.0.1:8001/retrain-model/              | Melatih ulang model pencocokan                |
 
 ---
 
@@ -108,15 +108,15 @@ Dokumentasi ini menjelaskan seluruh endpoint REST API yang tersedia pada sistem 
 
 | Method | Endpoint                                | Deskripsi                                          |
 |--------|-----------------------------------------|----------------------------------------------------|
-| GET    | /matching-results/                      | Menampilkan daftar hasil matching                  |
-| GET    | /matching-stats/                        | Statistik hasil matching                           |
-| GET    | /categorized-results/                   | Hasil matching yang telah dikategorikan            |
-| GET    | /matching-summary/                      | Ringkasan hasil pencocokan                         |
-| GET    | /categories/                            | Daftar kategori hasil pencocokan                   |
-| GET    | /match-result-detail/<result_id>/       | Detail hasil pencocokan berdasarkan ID             |
-| GET    | /all-results/                           | Menampilkan seluruh hasil matching (khusus admin)  |
-| POST   | /export-categorized/                    | Mengekspor hasil matching yang sudah dikategorikan |
-| POST   | /export-all/                            | Mengekspor semua hasil matching                    |
+| GET    | http://127.0.0.1:8001/matching-results/                      | Menampilkan daftar hasil matching                  |
+| GET    | http://127.0.0.1:8001/matching-stats/                        | Statistik hasil matching                           |
+| GET    | http://127.0.0.1:8001/categorized-results/                   | Hasil matching yang telah dikategorikan            |
+| GET    | http://127.0.0.1:8001/matching-summary/                      | Ringkasan hasil pencocokan                         |
+| GET    | http://127.0.0.1:8001/categories/                            | Daftar kategori hasil pencocokan                   |
+| GET    | http://127.0.0.1:8001/match-result-detail/<result_id>/       | Detail hasil pencocokan berdasarkan ID             |
+| GET    | http://127.0.0.1:8001/all-results/                           | Menampilkan seluruh hasil matching (khusus admin)  |
+| POST   | http://127.0.0.1:8001/export-categorized/                    | Mengekspor hasil matching yang sudah dikategorikan |
+| POST   | http://127.0.0.1:8001/export-all/                            | Mengekspor semua hasil matching                    |
 
 ---
 
@@ -124,8 +124,8 @@ Dokumentasi ini menjelaskan seluruh endpoint REST API yang tersedia pada sistem 
 
 | Method | Endpoint   | Deskripsi               |
 |--------|------------|-------------------------|
-| GET    | /users/    | Menampilkan semua pengguna |
-| POST   | /users/    | Menambahkan pengguna baru |
+| GET    | http://127.0.0.1:8001/users/    | Menampilkan semua pengguna |
+| POST   | http://127.0.0.1:8001/users/    | Menambahkan pengguna baru |
 
 ---
 
@@ -133,10 +133,10 @@ Dokumentasi ini menjelaskan seluruh endpoint REST API yang tersedia pada sistem 
 
 | Method        | Endpoint                                 | Deskripsi                                  |
 |---------------|------------------------------------------|--------------------------------------------|
-| GET / POST    | /assignments/                            | Menampilkan atau membuat assignment baru   |
-| GET / PUT / DELETE | /assignments/<pk>/                  | Detail, edit, atau hapus assignment        |
-| PATCH / PUT   | /assignments/<pk>/status/                | Memperbarui status assignment              |
-| GET           | /assignments/<assignment_id>/progress/   | Menampilkan progres assignment             |
+| GET / POST    | http://127.0.0.1:8001/assignments/                            | Menampilkan atau membuat assignment baru   |
+| GET / PUT / DELETE | http://127.0.0.1:8001/assignments/<pk>/                  | Detail, edit, atau hapus assignment        |
+| PATCH / PUT   | http://127.0.0.1:8001/assignments/<pk>/status/                | Memperbarui status assignment              |
+| GET           | http://127.0.0.1:8001/assignments/<assignment_id>/progress/   | Menampilkan progres assignment             |
 
 ---
 
@@ -144,9 +144,9 @@ Dokumentasi ini menjelaskan seluruh endpoint REST API yang tersedia pada sistem 
 
 | Method        | Endpoint                          | Deskripsi                                      |
 |---------------|-----------------------------------|------------------------------------------------|
-| GET / POST    | /employees/                       | Menampilkan atau menambah data pegawai         |
-| GET / PUT / DELETE | /employees/<employee_id>/    | Detail, edit, atau hapus data pegawai          |
-| POST          | /submit-batch-labeling/           | Mengirim hasil labeling dalam jumlah banyak    |
+| GET / POST    | http://127.0.0.1:8001/employees/                       | Menampilkan atau menambah data pegawai         |
+| GET / PUT / DELETE | http://127.0.0.1:8001/employees/<employee_id>/    | Detail, edit, atau hapus data pegawai          |
+| POST          | http://127.0.0.1:8001/submit-batch-labeling/           | Mengirim hasil labeling dalam jumlah banyak    |
 
 ---
 
@@ -154,9 +154,9 @@ Dokumentasi ini menjelaskan seluruh endpoint REST API yang tersedia pada sistem 
 
 | Method | Endpoint                         | Deskripsi                                 |
 |--------|----------------------------------|-------------------------------------------|
-| GET    | /my-assignments/                 | Menampilkan assignment milik pegawai      |
-| GET    | /my-labeling-data/               | Mengambil data untuk pelabelan pegawai    |
-| GET    | /my-assignment-status/           | Menampilkan status assignment pegawai     |
+| GET    | http://127.0.0.1:8001/my-assignments/                 | Menampilkan assignment milik pegawai      |
+| GET    | http://127.0.0.1:8001/my-labeling-data/               | Mengambil data untuk pelabelan pegawai    |
+| GET    | http://127.0.0.1:8001/my-assignment-status/           | Menampilkan status assignment pegawai     |
 
 ---
 
